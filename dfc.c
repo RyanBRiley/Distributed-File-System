@@ -95,7 +95,7 @@ int configure_client(char *config_file, struct config_struct *c)
 	return 0;
 }
 
-int get_from_server(int sock, char *command, struct sockaddr_in remote)
+int get_from_server(int sock[4], char *command, struct sockaddr_in remote)
 {
 	return 0;
 }
@@ -124,8 +124,7 @@ int main (int argc, char * argv[])
 	int nfile_size;
 	int file_size;
 	FILE *fp;
-	struct config_struct *c = malloc(sizeof(struct config_struct));
-	puts("hi my name is brielle");
+	struct config_struct *c = malloc(sizeof(struct config_struct));	
 
 	struct sockaddr_in server1;              //"Internet socket address structure"
 	struct sockaddr_in server2;      
@@ -197,25 +196,25 @@ int main (int argc, char * argv[])
 			int nfaccess;
 			//send command to server
 			puts("ONE");
-			send(sock, command, strlen(command)+1, 0);
+			send(sock[0], command, strlen(command)+1, 0);
 			puts("TWO");
 			//get back whether or not server can complete command (maybe file already exists)
-			recvfrom(sock, &nfaccess, sizeof(int), 0, (struct sockaddr *) &server1, &addr_length);
+			recv(sock[0], &nfaccess, sizeof(int), 0);
 			faccess = ntohl(nfaccess);
 
 			if(faccess) //server can complete
-			{
+			{ /* this needs to where I cut the file up and check md5hash, etc */
 				/* get file size send it to server */
 				fseek(fp, 0, SEEK_END);
 				file_size=ftell(fp);
 				nfile_size = htonl(file_size);
-				send(sock, &nfile_size, sizeof(int)+1, 0);
+				send(sock[0], &nfile_size, sizeof(int)+1, 0);
 				fseek(fp, 0, SEEK_SET);
 				char fbuffer[MAXBUFSIZE];
 				/*read from file and send it buffered to server in packets */
 				while(fread(fbuffer, 1, MAXBUFSIZE, fp) > 0)
 				{
-					send(sock, fbuffer, sizeof(fbuffer), 0);
+					send(sock[0], fbuffer, sizeof(fbuffer), 0);
 				}
 				
 			}
@@ -243,23 +242,26 @@ int main (int argc, char * argv[])
 		else if(!strcmp(token, "exit"))
 		{
 			/* send server exit command, exit */
-			send(sock, command, strlen(command)+1, 0);	
+			send(sock[0], command, strlen(command)+1, 0);	
 			printf("exiting...\n");
 			break;
 		}
 		else
 		{
 			/*unrecognized command.. let server handle this*/
-			send(sock, command, strlen(command)+1, 0);
+			send(sock[0], command, strlen(command)+1, 0);
 			char msg[MAXBUFSIZE];
-			recvfrom(sock, msg, sizeof(msg), 0, (struct sockaddr *) &server1, &addr_length);
+			recv(sock[0], msg, sizeof(msg), 0);
 			puts(msg);
 
 		}
 
 	}
 	
-	close(sock);
+	close(sock[0]);
+	close(sock[1]);
+	close(sock[2]);
+	close(sock[3]);
 	return 0;
 }
 	
