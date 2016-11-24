@@ -153,8 +153,6 @@ int main (int argc, char * argv[])
 	server1.sin_port = htons(atoi(c->dfs1_port));      //sets port to network byte order
 	server1.sin_addr.s_addr = inet_addr(c->dfs1_addr); //sets server1 IP address
 	
-
-
 	bzero(&server2,sizeof(server2));               //zero the struct
 	server2.sin_family = AF_INET;                 //address family
 	server2.sin_port = htons(atoi(c->dfs2_port));      //sets port to network byte order
@@ -187,7 +185,81 @@ int main (int argc, char * argv[])
 		display_user_menu(command);
 		char *comdup = strndup(command, strlen(command)-1);    //remove new line
 		char *token = strsep(&comdup, " "); //split into command and filename
+		if(!strcmp(token, "put")){
+			fp = fopen(comdup, "r"); //open file
+			if(fp == NULL) //check if file exists
+			{
+				strcpy(msg, "FILE DOES NOT EXIST. CHOOSE ANOTHER FILE\n");
+				puts(msg);
+				continue; 
+			} 
+			int faccess;
+			int nfaccess;
+			//send command to server
+			puts("ONE");
+			sendto(sock, command, strlen(command)+1, 0, (struct sockaddr *) &server1, sizeof(server1));
+			puts("TWO");
+			//get back whether or not server can complete command (maybe file already exists)
+			recvfrom(sock, &nfaccess, sizeof(int), 0, (struct sockaddr *) &server1, &addr_length);
+			faccess = ntohl(nfaccess);
+
+			if(faccess) //server can complete
+			{
+				/* get file size send it to server */
+				fseek(fp, 0, SEEK_END);
+				file_size=ftell(fp);
+				nfile_size = htonl(file_size);
+				sendto(sock, &nfile_size, sizeof(int)+1, 0, (struct sockaddr *) &server1, sizeof(server1));
+				fseek(fp, 0, SEEK_SET);
+				char fbuffer[MAXBUFSIZE];
+				/*read from file and send it buffered to server in packets */
+				while(fread(fbuffer, 1, MAXBUFSIZE, fp) > 0)
+				{
+					sendto(sock, fbuffer, sizeof(fbuffer), 0, (struct sockaddr *) &server1, sizeof(server1));
+				}
+				
+			}
+			else //server returned 0 for faccess -- cannot complete request
+			{
+				printf("ERROR: FILE ALREADY EXISTS ON SERVER. CHOOSE ANOTHER FILE\n");
+				continue;
+			}
+			fclose(fp);
+		}
+		else if(!strcmp(token, "get")) 
+		{
+			if(get_from_server(sock, command, server1)) //get file from server
+			{
+				printf("FILE DOES NOT EXIST ON SERVER. PLEASE CHOOSE A NEW FILE\n");
+			}
+		}
+		else if(!strcmp(token, "list"))
+		{
+			if(get_from_server(sock, command, server1)) // get ls from server
+			{
+				printf("ERROR executing ls command\n");
+			}
+		}
+		else if(!strcmp(token, "exit"))
+		{
+			/* send server exit command, exit */
+			sendto(sock, command, strlen(command)+1, 0, (struct sockaddr *) &server1, sizeof(server1));	
+			printf("exiting...\n");
+			break;
+		}
+		else
+		{
+			/*unrecognized command.. let server handle this*/
+			sendto(sock, command, strlen(command)+1, 0, (struct sockaddr *) &server1, sizeof(server1));
+			char msg[MAXBUFSIZE];
+			recvfrom(sock, msg, sizeof(msg), 0, (struct sockaddr *) &server1, &addr_length);
+			puts(msg);
+
+		}
+
 	}
+	
+	close(sock);
 	return 0;
 }
 	
