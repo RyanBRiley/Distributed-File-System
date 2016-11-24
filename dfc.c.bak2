@@ -51,6 +51,7 @@ int configure_client(char *config_file, struct config_struct *c)
 		perror("error opening config file");
 		exit(1);
 	}
+	puts("zzzzz");
 	while((read = getline(&line, &len, fp)) != -1)
 	{
 		char *linedup = strndup(line, strlen(line)); //parse file
@@ -58,25 +59,32 @@ int configure_client(char *config_file, struct config_struct *c)
 		strtok(linedup, "\n"); 
 		if(!strcmp(token, "Server"))
 		{
+			puts("xxxx");
 			char *token2 = strsep(&linedup, " ");
 			char *token3 = strsep(&linedup, ":");
 		 	if(!strcmp(token2, "DFS1"))
 		 	{
+		 		puts("x1");
+		 		puts(token3);
 		 		strcpy(c->dfs1_addr, token3);
+		 		puts("x12");
 		 		strcpy(c->dfs1_port, linedup);
 		 	}
 			else if(!strcmp(token2, "DFS2"))
 		 	{
+		 		puts("x2");
 		 		strcpy(c->dfs2_addr, token3);
 		 		strcpy(c->dfs2_port, linedup);
 		 	}
 		 	else if(!strcmp(token2, "DFS3"))
 		 	{
+		 		puts("x3");
 		 		strcpy(c->dfs3_addr, token3);
 		 		strcpy(c->dfs3_port, linedup);
 		 	}
 		 	else if(!strcmp(token2, "DFS4"))
 		 	{
+		 		puts("x4");
 		 		strcpy(c->dfs4_addr, token3);
 		 		strcpy(c->dfs4_port, linedup);
 		 	}
@@ -84,10 +92,12 @@ int configure_client(char *config_file, struct config_struct *c)
 		else if(!strcmp(token, "Username:"))
 		{
 			strcpy(c->username, linedup);
+			puts("aaa");
 		}
 		else if(!strcmp(token, "Password:"))
 		{
 			strcpy(c->passwd, linedup);
+			puts("bbb");
 		}
 	}
 
@@ -125,7 +135,6 @@ int main (int argc, char * argv[])
 	int file_size;
 	FILE *fp;
 	struct config_struct *c = malloc(sizeof(struct config_struct));
-	puts("hi my name is brielle");
 
 	struct sockaddr_in server1;              //"Internet socket address structure"
 	struct sockaddr_in server2;      
@@ -141,16 +150,20 @@ int main (int argc, char * argv[])
 	}
 
 	configure_client(argv[1] , c);
-
-	//printf("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",c->dfs1_addr,c->dfs1_port,c->dfs2_addr,c->dfs2_port,c->dfs3_addr,c->dfs3_port,c->username,c->passwd);
+	puts("zero");
+	printf("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",c->dfs1_addr,c->dfs1_port,c->dfs2_addr,c->dfs2_port,c->dfs3_addr,c->dfs3_port,c->username,c->passwd);
+	puts("double zero");
 	/******************
 	  Here we populate a sockaddr_in struct with
 	  information regarding where we'd like to send our packet 
 	  i.e the Server.
 	 ******************/
 	bzero(&server1,sizeof(struct sockaddr_in));               //zero the struct
+	puts("11111111111111");
 	server1.sin_family = AF_INET;                 //address family
+	
 	server1.sin_port = htons(atoi(c->dfs1_port));      //sets port to network byte order
+	puts("222222222222");
 	server1.sin_addr.s_addr = inet_addr(c->dfs1_addr); //sets server1 IP address
 	
 
@@ -171,6 +184,7 @@ int main (int argc, char * argv[])
 	server4.sin_addr.s_addr = inet_addr(c->dfs4_addr); //sets server1 IP address
 
 	//Causes the system to create a generic socket of type TCP (datastream)
+	puts("triple zero");
 	int i = 0;
 	while (i < 4)
 	{	
@@ -180,13 +194,6 @@ int main (int argc, char * argv[])
 			exit(1);
 		}
 		i++;
-	}
-	while(1)
-	{
-		
-		display_user_menu(command);
-		char *comdup = strndup(command, strlen(command)-1);    //remove new line
-		char *token = strsep(&comdup, " "); //split into command and filename
 	}
 	return 0;
 }
