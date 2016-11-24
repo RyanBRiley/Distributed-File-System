@@ -111,23 +111,33 @@ int main (int argc, char * argv[] )
 	int sock_accepted;
 	struct sockaddr_in serv_addr, cli_addr;     //"Internet socket address structure"
 	unsigned int cli_addr_length;         //length of the sockaddr_in structure
+	char base_dir[32];
 	              	
 	char buffer[MAXBUFSIZE];             //a buffer to store our received message
 	
 
 	if (argc != 2)
 	{
-		printf ("USAGE: ./dfs <port>\n");
+		printf ("USAGE: ./dfs <server directory> <port>\n");
 		exit(1);
 	}
 
+	if(!strcmp(argv[1], "/DFS1") || !strcmp(argv[1], "/DFS2") || !strcmp(argv[1], "/DFS3") || !strcmp(argv[1], "/DFS4"))
+	{
+		printf ("USAGE: ./dfs <server directory> <port>\n");
+		exit(1);
+	}
+	else
+	{
+		strcpy(base_dir, argv[1]);
+	}
 	/******************
 	  This code populates the sockaddr_in struct with
 	  the information about our socket
 	 ******************/
 	bzero(&serv_addr,sizeof(serv_addr));                    //zero the struct
 	serv_addr.sin_family = AF_INET;                   //address family
-	serv_addr.sin_port = htons(atoi(argv[1]));        //htons() sets the port # to network byte order
+	serv_addr.sin_port = htons(atoi(argv[2]));        //htons() sets the port # to network byte order
 	serv_addr.sin_addr.s_addr = INADDR_ANY;           //supplies the IP address of the local machine
 
 
