@@ -177,7 +177,7 @@ int main (int argc, char * argv[])
 			printf("unable to create socket\n");
 			exit(1);
 		}
-		i++;
+		i++; 
 	}
 	while(1)
 	{
@@ -197,7 +197,7 @@ int main (int argc, char * argv[])
 			int nfaccess;
 			//send command to server
 			puts("ONE");
-			sendto(sock, command, strlen(command)+1, 0, (struct sockaddr *) &server1, sizeof(server1));
+			send(sock, command, strlen(command)+1, 0);
 			puts("TWO");
 			//get back whether or not server can complete command (maybe file already exists)
 			recvfrom(sock, &nfaccess, sizeof(int), 0, (struct sockaddr *) &server1, &addr_length);
@@ -209,13 +209,13 @@ int main (int argc, char * argv[])
 				fseek(fp, 0, SEEK_END);
 				file_size=ftell(fp);
 				nfile_size = htonl(file_size);
-				sendto(sock, &nfile_size, sizeof(int)+1, 0, (struct sockaddr *) &server1, sizeof(server1));
+				send(sock, &nfile_size, sizeof(int)+1, 0);
 				fseek(fp, 0, SEEK_SET);
 				char fbuffer[MAXBUFSIZE];
 				/*read from file and send it buffered to server in packets */
 				while(fread(fbuffer, 1, MAXBUFSIZE, fp) > 0)
 				{
-					sendto(sock, fbuffer, sizeof(fbuffer), 0, (struct sockaddr *) &server1, sizeof(server1));
+					send(sock, fbuffer, sizeof(fbuffer), 0);
 				}
 				
 			}
@@ -243,14 +243,14 @@ int main (int argc, char * argv[])
 		else if(!strcmp(token, "exit"))
 		{
 			/* send server exit command, exit */
-			sendto(sock, command, strlen(command)+1, 0, (struct sockaddr *) &server1, sizeof(server1));	
+			send(sock, command, strlen(command)+1, 0);	
 			printf("exiting...\n");
 			break;
 		}
 		else
 		{
 			/*unrecognized command.. let server handle this*/
-			sendto(sock, command, strlen(command)+1, 0, (struct sockaddr *) &server1, sizeof(server1));
+			send(sock, command, strlen(command)+1, 0);
 			char msg[MAXBUFSIZE];
 			recvfrom(sock, msg, sizeof(msg), 0, (struct sockaddr *) &server1, &addr_length);
 			puts(msg);

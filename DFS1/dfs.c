@@ -29,25 +29,25 @@ int read_to_client(int sock, char *file_name, struct sockaddr_in remote)
 		nfaccess = htonl(faccess); //switch to network order
 
 		/*send status to client and return*/
-		sendto(sock, &nfaccess, sizeof(int)+1, 0, (struct sockaddr *) &remote, sizeof(remote));
+		send(sock, &nfaccess, sizeof(int)+1, 0);
 		return 1;
 	}
 	/*tell client that file was able to be opened */
 	faccess = 1;
 	nfaccess = htonl(faccess);
-	sendto(sock, &nfaccess, sizeof(int)+1, 0, (struct sockaddr *) &remote, sizeof(remote));
+	send(sock, &nfaccess, sizeof(int)+1, 0);
 
 	/*get file size and send it to client */
 	fseek(fp, 0, SEEK_END);
 	int file_size=ftell(fp);
 	int nfile_size = htonl(file_size);
-	sendto(sock, &nfile_size, sizeof(int)+1, 0, (struct sockaddr *) &remote, sizeof(remote));
+	send(sock, &nfile_size, sizeof(int)+1, 0);
 
 	/*go back to beginning of file, read it into the buffer, send it client*/
 	fseek(fp, 0, SEEK_SET);
 	char *fbuffer = malloc(file_size); //allocate buffer
 	fread(fbuffer, file_size, 1, fp);
-	sendto(sock, fbuffer, strlen(fbuffer)+1, 0, (struct sockaddr *) &remote, sizeof(remote));
+	send(sock, fbuffer, strlen(fbuffer)+1, 0);
 	free(fbuffer);
 	fclose(fp);
 	return 0;
@@ -68,7 +68,7 @@ int write_from_client(int sock, char *file_name, struct sockaddr_in remote)
 		/*send client status that file already exists and return*/
 		faccess = 0;
 		nfaccess = htonl(faccess);
-		sendto(sock, &nfaccess, sizeof(int)+1, 0, (struct sockaddr *) &remote, sizeof(remote));
+		send(sock, &nfaccess, sizeof(int)+1, 0);
 		return 1;
 	}
 	else //file does not exist, ok to write
@@ -76,7 +76,7 @@ int write_from_client(int sock, char *file_name, struct sockaddr_in remote)
 		/*let client know that write is possible*/
 		faccess = 1;
 		nfaccess = htonl(faccess);
-		sendto(sock, &nfaccess, sizeof(int)+1, 0, (struct sockaddr *) &remote, sizeof(remote));
+		send(sock, &nfaccess, sizeof(int)+1, 0);
 
 		fp = fopen(file_name, "wb");//open file
 
@@ -116,7 +116,7 @@ int main (int argc, char * argv[] )
 
 	if (argc != 2)
 	{
-		printf ("USAGE:  <port>\n");
+		printf ("USAGE: ./dfs <port>\n");
 		exit(1);
 	}
 
@@ -130,8 +130,8 @@ int main (int argc, char * argv[] )
 	sin.sin_addr.s_addr = INADDR_ANY;           //supplies the IP address of the local machine
 
 
-	//Causes the system to create a generic socket of type UDP (datagram)
-	if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+	//Causes the system to create a generic socket of type TCP (datastream)
+	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	{
 		printf("unable to create socket");
 	}
@@ -174,7 +174,7 @@ int main (int argc, char * argv[] )
 			}
 		}
 
-		else if(!strncmp(buffer, "ls", 2))
+		else if(!strncmp(buffer, "list", 2))
 		{
 			system("ls > ls_tmp.txt"); //write ls results to temp file
 			char file_name[] = "ls_tmp.txt";
@@ -197,7 +197,7 @@ int main (int argc, char * argv[] )
 			printf("unrecognized command\n");
 			char *comm = strndup(buffer, strlen(buffer)-1);
 			strcat(comm, " -- THE PREVIOUS COMMAND IS NOT UNDERSTOOD\n");
-			sendto(sock, comm, strlen(comm)+1, 0, (struct sockaddr *) &remote, sizeof(remote));
+			send(sock, comm, strlen(comm)+1, 0);
 			continue; 
 		}
 	}	
