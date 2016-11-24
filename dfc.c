@@ -118,7 +118,8 @@ int list()
 int main (int argc, char * argv[])
 {
 
-	int sock[4];                               //this will be our socket
+	int sock[4];      // Array of sockets, one for each server
+	int connectfd[4]; // Array of connection descriptors, one for each connection (server)
 	char *command = malloc(sizeof(char)*MAXBUFSIZE);
 	char msg[MAXBUFSIZE];	
 	int nfile_size;
@@ -173,10 +174,23 @@ int main (int argc, char * argv[])
 	{	
 		if ((sock[i] = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 		{
-			printf("unable to create socket\n");
-			exit(1);
+			printf("unable to create socket %d\n", i);
+			//exit(1);
 		}
 		i++; 
+	}
+	connectfd[0] = connect(sock[0], (struct sockaddr *)&server1, sizeof(server1));
+	connectfd[1] = connect(sock[1], (struct sockaddr *)&server2, sizeof(server2));
+	connectfd[2] = connect(sock[2], (struct sockaddr *)&server3, sizeof(server3));
+	connectfd[3] = connect(sock[3], (struct sockaddr *)&server4, sizeof(server4));
+	
+	i = 0;
+	while (i < 4)
+	{
+		if(connectfd[i] == -1)
+		{
+			printf("unable to connect to server %d\n", i + 1);
+		}
 	}
 	while(1)
 	{

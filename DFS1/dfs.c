@@ -17,7 +17,7 @@
 #define MAXBUFSIZE 100
 
 /* gets file, reads it into a buffer, sends it to client */
-int read_to_client(int sock, char *file_name, struct sockaddr_in remote) 
+int read_to_client(int sock, char *file_name, struct sockaddr_in cli_addr) 
 {
 	int faccess;
 	int nfaccess;
@@ -54,13 +54,13 @@ int read_to_client(int sock, char *file_name, struct sockaddr_in remote)
 }
 
 /*gets file from client, writes it into local dir*/
-int write_from_client(int sock, char *file_name, struct sockaddr_in remote)
+int write_from_client(int sock, char *file_name, struct sockaddr_in cli_addr)
 {
 	int nfile_size;
 	int faccess;
 	int nfaccess;
 	int bytes_recv = 0;
-	unsigned int remote_length;
+	unsigned int cli_addr_length;
 	FILE *fp;
 			
 	if(access(file_name, F_OK) != -1) //file exists
@@ -81,7 +81,7 @@ int write_from_client(int sock, char *file_name, struct sockaddr_in remote)
 		fp = fopen(file_name, "wb");//open file
 
 		/*get file size*/
-		recvfrom(sock, &nfile_size, sizeof(int), 0, (struct sockaddr *) &remote, &remote_length);
+		recv(sock, &nfile_size, sizeof(int), 0);
 		int file_size = ntohl(nfile_size);
 
 		char fbuffer[MAXBUFSIZE];
@@ -90,14 +90,14 @@ int write_from_client(int sock, char *file_name, struct sockaddr_in remote)
 		while (bytes_recv + sizeof(fbuffer) < file_size)
 		{
 			bzero(fbuffer,sizeof(fbuffer));
-			bytes_recv += recvfrom(sock, fbuffer, sizeof(fbuffer), 0, (struct sockaddr *) &remote, &remote_length);
+			bytes_recv += recv(sock, fbuffer, sizeof(fbuffer), 0);
 			fwrite(fbuffer, sizeof(fbuffer), 1, fp);
 			
 		}
 		/*write leftover bytes that were incommensurable with sizeof(fbuffer)*/
 		bzero(fbuffer,sizeof(fbuffer));
 		int t_remain = file_size - bytes_recv;
-		recvfrom(sock, fbuffer, t_remain, 0, (struct sockaddr *) &remote, &remote_length);
+		recv(sock, fbuffer, t_remain, 0);
 		fwrite(fbuffer, t_remain, 1, fp);
 		fflush(fp);
 		fclose(fp);
@@ -108,8 +108,9 @@ int write_from_client(int sock, char *file_name, struct sockaddr_in remote)
 int main (int argc, char * argv[] )
 {
 	int sock;                           //This will be our socket
-	struct sockaddr_in sin, remote;     //"Internet socket address structure"
-	unsigned int remote_length;         //length of the sockaddr_in structure
+	int sock_accepted;
+	struct sockaddr_in serv_addr, cli_addr;     //"Internet socket address structure"
+	unsigned int cli_addr_length;         //length of the sockaddr_in structure
 	              	
 	char buffer[MAXBUFSIZE];             //a buffer to store our received message
 	
@@ -124,10 +125,10 @@ int main (int argc, char * argv[] )
 	  This code populates the sockaddr_in struct with
 	  the information about our socket
 	 ******************/
-	bzero(&sin,sizeof(sin));                    //zero the struct
-	sin.sin_family = AF_INET;                   //address family
-	sin.sin_port = htons(atoi(argv[1]));        //htons() sets the port # to network byte order
-	sin.sin_addr.s_addr = INADDR_ANY;           //supplies the IP address of the local machine
+	bzero(&serv_addr,sizeof(serv_addr));                    //zero the struct
+	serv_addr.sin_family = AF_INET;                   //address family
+	serv_addr.sin_port = htons(atoi(argv[1]));        //htons() sets the port # to network byte order
+	serv_addr.sin_addr.s_addr = INADDR_ANY;           //supplies the IP address of the local machine
 
 
 	//Causes the system to create a generic socket of type TCP (datastream)
@@ -141,24 +142,25 @@ int main (int argc, char * argv[] )
 	  Once we've created a socket, we must bind that socket to the 
 	  local address and port we've supplied in the sockaddr_in struct
 	 ******************/
-	if (bind(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0)
+	if (bind(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
 	{
 		printf("unable to bind socket\n");
 	}
 	
-
-	remote_length = sizeof(remote);
+	listen(sock, 5);
+	cli_addr_length = sizeof(cli_addr);
+	sock_accepted = accept(sock, (struct sockaddr *)&cli_addr,&cli_addr_length);
 
 	while(1){
 		bzero(buffer,sizeof(buffer));
 		/*get command from client, parse it*/
-		recvfrom(sock, buffer, sizeof(buffer), 0, (struct sockaddr *) &remote, &remote_length);
+		recv(sock, buffer, sizeof(buffer), 0);
 		char *bufdup = strndup(buffer, strlen(buffer)-1);    //remove new line
 		char *token = strsep(&bufdup, " ");
 
 		if(!strcmp(token, "put"))
 		{
-			if(write_from_client(sock, bufdup, remote))
+			if(write_from_client(sock, bufdup, cli_addr))
 			{
 				printf("requested file exists\n");
 				continue;
@@ -167,7 +169,7 @@ int main (int argc, char * argv[] )
 
 		else if(!strcmp(token, "get"))
 		{
-			if(read_to_client(sock, bufdup, remote))
+			if(read_to_client(sock, bufdup, cli_addr))
 			{
 				printf("FILE DOES NOT EXIST\n");
 				continue;
@@ -178,7 +180,7 @@ int main (int argc, char * argv[] )
 		{
 			system("ls > ls_tmp.txt"); //write ls results to temp file
 			char file_name[] = "ls_tmp.txt";
-			if(read_to_client(sock, file_name, remote))
+			if(read_to_client(sock, file_name, cli_addr))
 			{
 				printf("ERROR executing ls command\n");
 				continue;
