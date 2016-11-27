@@ -111,6 +111,7 @@ int main (int argc, char * argv[] )
 	int sock_accepted;
 	struct sockaddr_in serv_addr, cli_addr;     //"Internet socket address structure"
 	unsigned int cli_addr_length;         //length of the sockaddr_in structure
+	unsigned int serv_addr_length;         //length of the sockaddr_in structure
 	char base_dir[32];
 	              	
 	char buffer[MAXBUFSIZE];             //a buffer to store our received message
@@ -126,7 +127,6 @@ int main (int argc, char * argv[] )
 	if(strcmp(argv[1], "/DFS1") && strcmp(argv[1], "/DFS2") && strcmp(argv[1], "/DFS3") && strcmp(argv[1], "/DFS4"))
 	{
 		printf ("USAGE: ./dfs <server directory> <port>\n");
-		puts("HERE");
 		exit(1);
 	}
 	else
@@ -162,12 +162,13 @@ int main (int argc, char * argv[] )
 	listen(sock, 5);
 	printf("listening on port %s....\n", argv[2]);
 	cli_addr_length = sizeof(cli_addr);
+	serv_addr_length = sizeof(serv_addr);
 	sock_accepted = accept(sock, (struct sockaddr *)&cli_addr,&cli_addr_length);
 
 	while(1){
 		bzero(buffer,sizeof(buffer));
 		/*get command from client, parse it*/
-		recv(sock, buffer, sizeof(buffer), 0);
+		recv(sock_accepted, buffer, sizeof(buffer), 0);
 		printf("received from client: \n%s\nend\n", buffer);
 		char *bufdup = strndup(buffer, strlen(buffer)-1);    //remove new line
 		char *token = strsep(&bufdup, " ");

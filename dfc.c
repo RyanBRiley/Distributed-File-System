@@ -212,9 +212,9 @@ int main (int argc, char * argv[])
 			int faccess;
 			int nfaccess;
 			//send command to server
-			puts("ONE");
+			
 			send(sock[0], command, strlen(command)+1, 0);
-			puts("TWO");
+		
 			//get back whether or not server can complete command (maybe file already exists)
 			recv(sock[0], &nfaccess, sizeof(int), 0);
 			faccess = ntohl(nfaccess);
