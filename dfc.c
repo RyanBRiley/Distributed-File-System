@@ -191,11 +191,14 @@ int main (int argc, char * argv[])
 		{
 			printf("unable to connect to server %d\n", i + 1);
 		}
+		i++;
 	}
+
 	while(1)
 	{
 		
 		display_user_menu(command);
+		printf("command: %s\n", command);	
 		char *comdup = strndup(command, strlen(command)-1);    //remove new line
 		char *token = strsep(&comdup, " "); //split into command and filename
 		if(!strcmp(token, "put")){
