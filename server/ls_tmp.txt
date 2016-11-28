@@ -1,1 +1,2 @@
+dirtest.txt
 test2.txt

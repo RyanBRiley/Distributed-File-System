@@ -322,7 +322,8 @@ int main (int argc, char * argv[] )
 						{
 							continue;
 						}
-						if(read_to_client(sock_accepted, bufdup))
+						sprintf(file_name,"%s/%s",c->base_dir,bufdup);
+						if(read_to_client(sock_accepted, file_name))
 						{
 							printf("FILE DOES NOT EXIST\n");
 							continue;
