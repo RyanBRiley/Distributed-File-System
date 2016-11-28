@@ -16,6 +16,50 @@
 
 #define MAXBUFSIZE 256
 
+struct user_struct 
+{
+	char username[32][32];
+	char passwd[32][32];
+	int max_user_index;
+};
+
+struct config_struct 
+{
+	char username[32];
+	char passwd[32];
+	char base_dir[32];
+};
+
+int configure_server(struct user_struct *users)
+{
+	FILE *fp;
+	int read;
+	ssize_t len = 0;
+	char *line = NULL;
+	
+	puts("in configure server");
+
+	fp = fopen("dfs.conf", "r");
+	if(fp == NULL) //cannot not find server config file
+	{	
+		perror("error opening config file");
+		exit(1);
+	}
+	int i = 0;
+	while((read = getline(&line, &len, fp)) != -1)
+	{
+		char *linedup = strndup(line, strlen(line)); //parse file
+		char *uname = strsep(&linedup, " ");
+		strtok(linedup, "\n"); 
+		strcpy(users->username[i], uname);
+		strcpy(users->passwd[i], linedup);
+		i++;
+	}
+	users->max_user_index = i;
+
+	fclose(fp);
+	return 0;
+}
 /* gets file, reads it into a buffer, sends it to client */
 int read_to_client(int sock, char *file_name) 
 {
@@ -110,6 +154,7 @@ int main (int argc, char * argv[] )
 	char base_dir[32];
 	              	
 	char buffer[MAXBUFSIZE];             //a buffer to store our received message
+	struct user_struct *users = malloc(sizeof(struct user_struct));
 	
 
 	if (argc != 3)
@@ -128,6 +173,10 @@ int main (int argc, char * argv[] )
 	{
 		strcpy(base_dir, argv[1]);
 	}
+
+	configure_server(users);
+	//printf("users->username[1]: %s\nusers->passwd[1]: %s\nusers->max_user_index: %d\n",users->username[1],users->passwd[1],users->max_user_index);
+
 	/******************
 	  This code populates the sockaddr_in struct with
 	  the information about our socket
@@ -164,11 +213,11 @@ int main (int argc, char * argv[] )
 		bzero(buffer,sizeof(buffer));
 		/*get command from client, parse it*/
 		recv(sock_accepted, buffer, sizeof(buffer), 0);
-		printf("received from client: \n%s\nend\n", buffer);
+		printf("received from client: \n%send\n", buffer);
 		char *bufdup = strndup(buffer, strlen(buffer)-1);    //remove new line
 		char *token = strsep(&bufdup, " ");
-		printf("token: %s\n",token);
-		printf("bufdup: %s\n",bufdup);
+		//printf("token: %s\n",token);
+		//printf("bufdup: %s\n",bufdup);
 
 
 		if(!strcmp(token, "put"))
