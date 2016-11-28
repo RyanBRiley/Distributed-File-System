@@ -105,6 +105,7 @@ int authenticate(int sock, struct config_struct *c, struct user_struct *users)
 
 }
 
+/*contruct server directory based on user and particular server*/
 int construct_directory(char *base_dir, struct config_struct *c)
 {
 	struct stat st = {0};
@@ -117,6 +118,7 @@ int construct_directory(char *base_dir, struct config_struct *c)
 	}
 	return 0;
 }
+
 /* gets file, reads it into a buffer, sends it to client */
 int read_to_client(int sock, char *file_name) 
 {
@@ -166,7 +168,7 @@ int write_from_client(int sock, char *file_name)
 	unsigned int cli_addr_length;
 	FILE *fp;
 	char fbuffer[MAXBUFSIZE];
-			
+
 	if(access(file_name, F_OK) != -1) //file exists
 	{
 		/*send client status that file already exists and return*/
@@ -280,6 +282,7 @@ int main (int argc, char * argv[] )
 				while(1)
 				{
 					char sys_command[64];
+					char file_name[128];
 					bzero(buffer,sizeof(buffer));
 					/*get command from client, parse it*/
 					recv(sock_accepted, buffer, sizeof(buffer), 0);
@@ -296,7 +299,12 @@ int main (int argc, char * argv[] )
 							puts("Invalid Username/Password");
 							continue;
 						}
-						if(write_from_client(sock_accepted, bufdup))
+						if(construct_directory(argv[1], c))
+						{
+							continue;
+						}
+						sprintf(file_name,"%s/%s",c->base_dir,bufdup);
+						if(write_from_client(sock_accepted, file_name))
 						{
 							printf("requested file exists\n");
 							continue;
@@ -308,6 +316,10 @@ int main (int argc, char * argv[] )
 						if(!authenticate(sock_accepted, c, users))
 						{
 							puts("Invalid Username/Password");
+							continue;
+						}
+						if(construct_directory(argv[1], c))
+						{
 							continue;
 						}
 						if(read_to_client(sock_accepted, bufdup))
