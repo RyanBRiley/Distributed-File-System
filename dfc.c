@@ -10,7 +10,7 @@
 #include <unistd.h>
 
 
-#define MAXBUFSIZE 100
+#define MAXBUFSIZE 256
 
 /*struct to store all relevant configuration information */
 struct config_struct 
@@ -98,20 +98,27 @@ int configure_client(char *config_file, struct config_struct *c)
 int authenticate(int sock, struct config_struct *c)
 {
 	char *credentials = malloc(sizeof(char)*(strlen(c->username)+strlen(c->passwd)+1));
-	int auth;
+	int ack;
+	int authenticated = 0;
 	
-	recv(sock, &auth, sizeof(int), 0);
+	recv(sock, &ack, sizeof(int), 0);
 	
-	if(auth)
+	
+	//printf("c->username: %s\nc->passwd: %s\n", c->username, c->passwd);
+	sprintf(credentials, "%s %s", c->username, c->passwd);
+	//printf("credentials: %s\n",credentials);
+	//printf("sz_credentials: %d\nstrlen(credentials): %d\n",sz_credentials, strlen(credentials));
+	send(sock, credentials, MAXBUFSIZE, 0);
+	recv(sock, &authenticated, sizeof(int), 0);
+	send(sock, &ack, sizeof(int), 0);
+	free(credentials);
+	printf("authenticated: %d\n",authenticated);
+	if(!authenticated)
 	{
-		//printf("c->username: %s\nc->passwd: %s\n", c->username, c->passwd);
-		sprintf(credentials, "%s %s", c->username, c->passwd);
-		//printf("credentials: %s\n",credentials);
-		//printf("sz_credentials: %d\nstrlen(credentials): %d\n",sz_credentials, strlen(credentials));
-		send(sock, credentials, MAXBUFSIZE, 0);
-		free(credentials);
-		return 0;
-	}	
+		puts("Invalid Username/Password. Please try again.");
+	}
+	return authenticated;
+	
 }
 
 int get(int sock[4], char *command, char *file_name, struct config_struct *c)
@@ -135,7 +142,10 @@ int get(int sock[4], char *command, char *file_name, struct config_struct *c)
 	{
 		//send command to server
 		send(sock[0], command, strlen(command), 0);
-		authenticate(sock[0], c);
+		if (!authenticate(sock[0], c))
+		{
+			return 0;
+		}
 		/*let client know that write is possible*/
 		recv(sock[0], &nfaccess, sizeof(int), 0);
 		faccess = ntohl(nfaccess);
@@ -168,8 +178,55 @@ int get(int sock[4], char *command, char *file_name, struct config_struct *c)
 	}
 }
 
-int put()
+int put(int sock[4], char *command, char *file_name, struct config_struct *c)
 {
+	int nfile_size;
+	int file_size;
+	FILE *fp;
+	int bytes_read = 0;
+
+	fp = fopen(file_name, "r"); //open file
+	if(fp == NULL) //check if file exists
+	{
+		puts("FILE DOES NOT EXIST. CHOOSE ANOTHER FILE");
+		return 1; 
+	} 
+	int faccess;
+	int nfaccess;
+	//send command to server
+			
+	send(sock[0], command, strlen(command), 0);
+	if (!authenticate(sock[0], c))
+	{
+		return 0;
+	}
+	//get back whether or not server can complete command (maybe file already exists)
+	recv(sock[0], &nfaccess, sizeof(int), 0);
+	faccess = ntohl(nfaccess);
+
+	if(faccess) //server can complete
+	{ /* this needs to where I cut the file up and check md5hash, etc */
+		/* get file size send it to server */
+		fseek(fp, 0, SEEK_END);
+		file_size=ftell(fp);
+		nfile_size = htonl(file_size);
+		send(sock[0], &nfile_size, sizeof(int), 0);
+		fseek(fp, 0, SEEK_SET);
+		char fbuffer[MAXBUFSIZE];
+		/*read from file and send it buffered to server in packets */
+				
+		while((bytes_read = fread(fbuffer, 1, MAXBUFSIZE, fp)) > 0)
+		{
+			send(sock[0], fbuffer, bytes_read, 0);
+		}
+				
+	}
+	else //server returned 0 for faccess -- cannot complete request
+	{
+		printf("ERROR: FILE ALREADY EXISTS ON SERVER. CHOOSE ANOTHER FILE\n");
+		return 1;
+	}
+	fclose(fp);
 	return 0;
 }
 
@@ -189,7 +246,10 @@ int list(int sock[4], char *command, struct config_struct *c)
 			
 	//send command to server
 	send(sock[0], command, strlen(command), 0);
-	authenticate(sock[0], c);
+	if (!authenticate(sock[0], c))
+	{
+		return 0;
+	}
 	/*let client know that write is possible*/
 	recv(sock[0], &nfaccess, sizeof(int), 0);
 	faccess = ntohl(nfaccess);
@@ -223,11 +283,9 @@ int main (int argc, char * argv[])
 	int connectfd[4]; // Array of connection descriptors, one for each connection (server)
 	char *command = malloc(sizeof(char)*MAXBUFSIZE);
 	char msg[MAXBUFSIZE];	
-	int nfile_size;
-	int file_size;
-	FILE *fp;
+	
 	struct config_struct *c = malloc(sizeof(struct config_struct));	
-	int bytes_read = 0;
+	
 
 	struct sockaddr_in server1;              //"Internet socket address structure"
 	struct sockaddr_in server2;      
@@ -304,47 +362,12 @@ int main (int argc, char * argv[])
 		printf("command: %s\n", command);	
 		char *comdup = strndup(command, strlen(command)-1);    //remove new line
 		char *token = strsep(&comdup, " "); //split into command and filename
-		if(!strcmp(token, "put")){
-			fp = fopen(comdup, "r"); //open file
-			if(fp == NULL) //check if file exists
+		if(!strcmp(token, "put"))
+		{
+			if(put(sock, command, comdup, c)) //get file from server
 			{
-				strcpy(msg, "FILE DOES NOT EXIST. CHOOSE ANOTHER FILE\n");
-				puts(msg);
-				continue; 
-			} 
-			int faccess;
-			int nfaccess;
-			//send command to server
-			
-			send(sock[0], command, strlen(command), 0);
-			authenticate(sock[0], c);
-			//get back whether or not server can complete command (maybe file already exists)
-			recv(sock[0], &nfaccess, sizeof(int), 0);
-			faccess = ntohl(nfaccess);
-
-			if(faccess) //server can complete
-			{ /* this needs to where I cut the file up and check md5hash, etc */
-				/* get file size send it to server */
-				fseek(fp, 0, SEEK_END);
-				file_size=ftell(fp);
-				nfile_size = htonl(file_size);
-				send(sock[0], &nfile_size, sizeof(int), 0);
-				fseek(fp, 0, SEEK_SET);
-				char fbuffer[MAXBUFSIZE];
-				/*read from file and send it buffered to server in packets */
-				
-				while((bytes_read = fread(fbuffer, 1, MAXBUFSIZE, fp)) > 0)
-				{
-					send(sock[0], fbuffer, bytes_read, 0);
-				}
-				
-			}
-			else //server returned 0 for faccess -- cannot complete request
-			{
-				printf("ERROR: FILE ALREADY EXISTS ON SERVER. CHOOSE ANOTHER FILE\n");
-				continue;
-			}
-			fclose(fp);
+				printf("FILE DOES NOT EXIST ON SERVER. PLEASE CHOOSE A NEW FILE\n");
+			}	
 		}
 		else if(!strcmp(token, "get")) 
 		{
@@ -357,7 +380,7 @@ int main (int argc, char * argv[])
 		{
 			if(list(sock, command, c)) // get ls from server
 			{
-				printf("ERROR executing ls command\n");
+				printf("ERROR executing list command\n");
 			}
 		}
 		else if(!strcmp(token, "exit"))

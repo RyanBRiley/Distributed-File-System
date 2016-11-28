@@ -66,7 +66,7 @@ int configure_server(struct user_struct *users)
 /*user authentication*/
 int authenticate(int sock, struct config_struct *c, struct user_struct *users)
 {
-	puts("in authenticate");
+	
 
 	int authenticated = 0;
 	char auth_attempt[MAXBUFSIZE];
@@ -75,14 +75,14 @@ int authenticate(int sock, struct config_struct *c, struct user_struct *users)
 	
 
 	/*tell the client to send credentials*/
-	int auth = 1;
-	send(sock, &auth, sizeof(int), 0);
+	int ack = 1;
+	send(sock, &ack, sizeof(int), 0);
 
 	
 	/*get credentials*/
 	recv(sock, auth_attempt, MAXBUFSIZE, 0);
 	sscanf(auth_attempt, "%s %s", uname_attempt, passwd_attempt);
-	printf("auth_attempt: %s\nuname_attempt: %s\npasswd_attempt: %s\n", auth_attempt, uname_attempt, passwd_attempt);
+	
 	int i = 0;
 	while(i < users->total_user_index)
 	{
@@ -97,6 +97,9 @@ int authenticate(int sock, struct config_struct *c, struct user_struct *users)
 	{
 		sscanf(auth_attempt, "%s %s", c->username, c->passwd);
 	}
+	ack = 0;
+	send(sock, &authenticated, sizeof(int), 0);
+	recv(sock, &ack, sizeof(int), 0);
 	return authenticated;
 
 }
@@ -104,17 +107,14 @@ int authenticate(int sock, struct config_struct *c, struct user_struct *users)
 /* gets file, reads it into a buffer, sends it to client */
 int read_to_client(int sock, char *file_name) 
 {
-	puts("here in read_to_client0");
 	int faccess;
 	int nfaccess;
 	FILE *fp;
-	puts("here in read_to_client1");
-	printf("file_name in list2: %s\n",file_name);
+	printf("file_name to fetch: %s\n",file_name);
 	fp = fopen(file_name, "r");
-	puts("here in read_to_client2");
 	if(fp == NULL) //file does not exist
 	{
-		puts("here in read_to_client3");
+	
 		faccess = 0; //status code to inform client that there was a problem opening file
 		nfaccess = htonl(faccess); //switch to network order
 
@@ -125,7 +125,6 @@ int read_to_client(int sock, char *file_name)
 	/*tell client that file was able to be opened */
 	faccess = 1;
 	nfaccess = htonl(faccess);
-	puts("here in read_to_client4");
 	send(sock, &nfaccess, sizeof(int), 0);
 
 	/*get file size and send it to client */
@@ -280,7 +279,7 @@ int main (int argc, char * argv[] )
 					{
 						if(!authenticate(sock_accepted, c, users))
 						{
-							//print error
+							puts("Invalid Username/Password");
 							continue;
 						}
 						if(write_from_client(sock_accepted, bufdup))
@@ -294,7 +293,7 @@ int main (int argc, char * argv[] )
 					{
 						if(!authenticate(sock_accepted, c, users))
 						{
-							//print error
+							puts("Invalid Username/Password");
 							continue;
 						}
 						if(read_to_client(sock_accepted, bufdup))
@@ -304,17 +303,16 @@ int main (int argc, char * argv[] )
 						}
 					}
 
-					else if(!strncmp(buffer, "list", 4))
+					else if(!strcmp(token, "list"))
 					{
 						if(!authenticate(sock_accepted, c, users))
 						{
-							//print error
+							puts("Invalid Username/Password");
 							continue;
 						}
 						system("ls > ls_tmp.txt"); //write ls results to temp file
 						char file_name[] = "ls_tmp.txt";
-						printf("file_name in list: %s\n",file_name);
-						puts("HERE IN LIST");
+		
 						if(read_to_client(sock_accepted, file_name))
 						{
 							printf("ERROR executing list command\n");
@@ -322,7 +320,7 @@ int main (int argc, char * argv[] )
 						}
 					}
 
-					else if(!strncmp(buffer, "exit", 4))
+					else if(!strcmp(token, "exit"))
 					{
 						printf("user exiting....\n");
 						break;
