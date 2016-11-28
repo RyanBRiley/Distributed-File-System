@@ -2,7 +2,7 @@ dfs
 dfs.c
 dfs.c.bak
 dfs.c.bak5
-fear.jpg
+dfs.conf
 ls_tmp.txt
 test2.txt
 test.txt

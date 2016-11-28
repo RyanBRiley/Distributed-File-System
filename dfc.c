@@ -95,6 +95,15 @@ int configure_client(char *config_file, struct config_struct *c)
 	return 0;
 }
 
+int authenticate(int sock, struct config_struct *c)
+{
+	char credentials[MAXBUFSIZE];
+	sprintf(credentials, "%s %s", c->username, c->passwd);
+	send(sock, credentials, strlen(credentials), 0);
+	return 0;
+
+}
+
 int get(int sock[4], char *command, char *file_name)
 {
 	int nfile_size;
@@ -273,6 +282,7 @@ int main (int argc, char * argv[])
 		}
 		i++;
 	}
+	authenticate(sock[0], c);
 
 	while(1)
 	{

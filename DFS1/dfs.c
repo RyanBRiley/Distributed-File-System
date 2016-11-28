@@ -31,6 +31,7 @@ struct config_struct
 	char base_dir[32];
 };
 
+/*loads stored user information into memory from server config file*/
 int configure_server(struct user_struct *users)
 {
 	FILE *fp;
@@ -61,6 +62,30 @@ int configure_server(struct user_struct *users)
 	fclose(fp);
 	return 0;
 }
+
+/*user authentication*/
+int authenticate(int sock, struct config_struct *c, struct user_struct *users)
+{
+	int authenticated = 0;
+	char auth_attempt[MAXBUFSIZE];
+	char uname_attempt[32];
+	char passwd_attempt[32];
+	recv(sock, auth_attempt, sizeof(char)*MAXBUFSIZE, 0);
+	sscanf(auth_attempt, "%s %s", uname_attempt, passwd_attempt);
+	int i = 0;
+	while(i < users->total_user_index)
+	{
+		if(!strcmp(users->username[i], uname_attempt))
+		{
+			authenticated = !strcmp(users->passwd[i], passwd_attempt);
+		}
+		i++;
+	}
+	printf("authenticated: %d\n", authenticated);
+	return 0;
+
+}
+
 /* gets file, reads it into a buffer, sends it to client */
 int read_to_client(int sock, char *file_name) 
 {
@@ -209,6 +234,8 @@ int main (int argc, char * argv[] )
 	cli_addr_length = sizeof(cli_addr);
 	serv_addr_length = sizeof(serv_addr);
 	sock_accepted = accept(sock, (struct sockaddr *)&cli_addr,&cli_addr_length);
+	struct config_struct *c = malloc(sizeof(struct config_struct));
+	authenticate(sock_accepted, c, users);
 
 	while(1){
 		bzero(buffer,sizeof(buffer));
@@ -219,8 +246,8 @@ int main (int argc, char * argv[] )
 		char *token = strsep(&bufdup, " ");
 		//printf("token: %s\n",token);
 		//printf("bufdup: %s\n",bufdup);
-
-
+		
+		
 		if(!strcmp(token, "put"))
 		{
 			puts("in put");
