@@ -105,10 +105,9 @@ int authenticate(int sock, struct config_struct *c)
 	recv(sock, &ack, sizeof(int), 0);
 	
 	
-	//printf("c->username: %s\nc->passwd: %s\n", c->username, c->passwd);
+
 	sprintf(credentials, "%s %s", c->username, c->passwd);
-	//printf("credentials: %s\n",credentials);
-	//printf("sz_credentials: %d\nstrlen(credentials): %d\n",sz_credentials, strlen(credentials));
+
 	send(sock, credentials, MAXBUFSIZE, 0);
 	recv(sock, &authenticated, sizeof(int), 0);
 	send(sock, &ack, sizeof(int), 0);
@@ -241,7 +240,7 @@ int list(int sock[4], char *command, struct config_struct *c)
 	int bytes_recv = 0;
 	unsigned int cli_addr_length;
 	FILE *fp;
-	//char fbuffer[MAXBUFSIZE];
+	char fbuffer[MAXBUFSIZE];
 
 	
 			
@@ -266,13 +265,13 @@ int list(int sock[4], char *command, struct config_struct *c)
 	/*get file size*/
 	recv(sock[0], &nfile_size, sizeof(int), 0);
 	int file_size = ntohl(nfile_size);
-
+	printf("file size: %d\n", file_size);
 	/*get file from client in packets, write to file */
-	char *fbuffer = malloc(file_size);
+	//char *fbuffer = malloc(file_size);
 	
-	recv(sock[0], fbuffer, file_size, 0);
+	recv(sock[0], fbuffer, MAXBUFSIZE, 0);
 	printf("%s\n",fbuffer);
-		
+	//free(fbuffer);	
 	return 0;
 	
 }
@@ -367,7 +366,7 @@ int main (int argc, char * argv[])
 		{
 			if(put(sock, command, comdup, c)) //get file from server
 			{
-				printf("FILE DOES NOT EXIST ON SERVER. PLEASE CHOOSE A NEW FILE\n");
+				printf("ERROR executing put command\n");
 			}	
 		}
 		else if(!strcmp(token, "get")) 

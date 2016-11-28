@@ -174,7 +174,7 @@ int write_from_client(int sock, char *file_name)
 		/*get file size*/
 		recv(sock, &nfile_size, sizeof(int), 0);
 		int file_size = ntohl(nfile_size);
-		printf("file size:%d\n",file_size);
+		
 		
 		/*get file from client in packets, write to file */
 		int bytes_remn = file_size;
@@ -310,6 +310,10 @@ int main (int argc, char * argv[] )
 							puts("Invalid Username/Password");
 							continue;
 						}
+						if(access("ls_tmp", F_OK) != -1) //file exists
+						{
+							system("rm ls_tmp.txt");
+						}
 						system("ls > ls_tmp.txt"); //write ls results to temp file
 						char file_name[] = "ls_tmp.txt";
 		
@@ -318,6 +322,7 @@ int main (int argc, char * argv[] )
 							printf("ERROR executing list command\n");
 							continue;
 						}
+
 					}
 
 					else if(!strcmp(token, "exit"))
