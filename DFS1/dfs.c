@@ -15,12 +15,13 @@
 
 
 #define MAXBUFSIZE 256
+#define MAXUSERS 32
 
 struct user_struct 
 {
-	char username[32][32];
-	char passwd[32][32];
-	int max_user_index;
+	char username[MAXUSERS][32];
+	char passwd[MAXUSERS][32];
+	int total_user_index;
 };
 
 struct config_struct 
@@ -46,7 +47,7 @@ int configure_server(struct user_struct *users)
 		exit(1);
 	}
 	int i = 0;
-	while((read = getline(&line, &len, fp)) != -1)
+	while(((read = getline(&line, &len, fp)) != -1) && (i < MAXUSERS))
 	{
 		char *linedup = strndup(line, strlen(line)); //parse file
 		char *uname = strsep(&linedup, " ");
@@ -55,7 +56,7 @@ int configure_server(struct user_struct *users)
 		strcpy(users->passwd[i], linedup);
 		i++;
 	}
-	users->max_user_index = i;
+	users->total_user_index = i;
 
 	fclose(fp);
 	return 0;
@@ -175,7 +176,7 @@ int main (int argc, char * argv[] )
 	}
 
 	configure_server(users);
-	//printf("users->username[1]: %s\nusers->passwd[1]: %s\nusers->max_user_index: %d\n",users->username[1],users->passwd[1],users->max_user_index);
+	//printf("users->username[1]: %s\nusers->passwd[1]: %s\nusers->total_user_index: %d\n",users->username[1],users->passwd[1],users->total_user_index);
 
 	/******************
 	  This code populates the sockaddr_in struct with
