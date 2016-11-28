@@ -17,7 +17,7 @@
 #define MAXBUFSIZE 256
 
 /* gets file, reads it into a buffer, sends it to client */
-int read_to_client(int sock, char *file_name, struct sockaddr_in cli_addr) 
+int read_to_client(int sock, char *file_name) 
 {
 	int faccess;
 	int nfaccess;
@@ -29,32 +29,32 @@ int read_to_client(int sock, char *file_name, struct sockaddr_in cli_addr)
 		nfaccess = htonl(faccess); //switch to network order
 
 		/*send status to client and return*/
-		send(sock, &nfaccess, sizeof(int)+1, 0);
+		send(sock, &nfaccess, sizeof(int), 0);
 		return 1;
 	}
 	/*tell client that file was able to be opened */
 	faccess = 1;
 	nfaccess = htonl(faccess);
-	send(sock, &nfaccess, sizeof(int)+1, 0);
+	send(sock, &nfaccess, sizeof(int), 0);
 
 	/*get file size and send it to client */
 	fseek(fp, 0, SEEK_END);
 	int file_size=ftell(fp);
 	int nfile_size = htonl(file_size);
-	send(sock, &nfile_size, sizeof(int)+1, 0);
+	send(sock, &nfile_size, sizeof(int), 0);
 
 	/*go back to beginning of file, read it into the buffer, send it client*/
 	fseek(fp, 0, SEEK_SET);
 	char *fbuffer = malloc(file_size); //allocate buffer
 	fread(fbuffer, file_size, 1, fp);
-	send(sock, fbuffer, strlen(fbuffer)+1, 0);
+	send(sock, fbuffer, strlen(fbuffer), 0);
 	free(fbuffer);
 	fclose(fp);
 	return 0;
 }
 
 /*gets file from client, writes it into local dir*/
-int write_from_client(int sock, char *file_name, struct sockaddr_in cli_addr)
+int write_from_client(int sock, char *file_name)
 {
 	int nfile_size;
 	int faccess;
@@ -202,7 +202,7 @@ int main (int argc, char * argv[] )
 		if(!strcmp(token, "put"))
 		{
 			puts("in put");
-			if(write_from_client(sock_accepted, bufdup, cli_addr))
+			if(write_from_client(sock_accepted, bufdup))
 			{
 				printf("requested file exists\n");
 				continue;
@@ -211,20 +211,20 @@ int main (int argc, char * argv[] )
 
 		else if(!strcmp(token, "get"))
 		{
-			if(read_to_client(sock_accepted, bufdup, cli_addr))
+			if(read_to_client(sock_accepted, bufdup))
 			{
 				printf("FILE DOES NOT EXIST\n");
 				continue;
 			}
 		}
 
-		else if(!strncmp(buffer, "list", 2))
+		else if(!strncmp(buffer, "list", 4))
 		{
 			system("ls > ls_tmp.txt"); //write ls results to temp file
 			char file_name[] = "ls_tmp.txt";
-			if(read_to_client(sock_accepted, file_name, cli_addr))
+			if(read_to_client(sock_accepted, file_name))
 			{
-				printf("ERROR executing ls command\n");
+				printf("ERROR executing list command\n");
 				continue;
 			}
 		}

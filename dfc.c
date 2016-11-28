@@ -95,9 +95,89 @@ int configure_client(char *config_file, struct config_struct *c)
 	return 0;
 }
 
-int get_from_server(int sock[4], char *command, struct sockaddr_in remote)
+int get(int sock[4], char *command, char *file_name)
 {
-	return 0;
+	int nfile_size;
+	int faccess;
+	int nfaccess;
+	int bytes_recv = 0;
+	unsigned int cli_addr_length;
+	FILE *fp;
+	char fbuffer[MAXBUFSIZE];
+
+	
+			
+	if(access(file_name, F_OK) != -1) //file exists
+	{
+		/*send client status that file already exists and return*/
+		/*faccess = 0;
+		nfaccess = htonl(faccess);
+		send(sock[0], &nfaccess, sizeof(int), 0);*/
+		puts("FILE ALREADY EXISTS");
+		return 1;
+	}
+	else //file does not exist, ok to write
+	{
+		//send command to server
+		send(sock[0], command, strlen(command), 0);
+		/*let client know that write is possible*/
+		recv(sock[0], &nfaccess, sizeof(int), 0);
+		faccess = ntohl(nfaccess);
+		if(!faccess)
+		{
+			puts("ERROR FETCHING FILE FROM SERVER");
+			return 1;
+		}
+
+		//send(sock[0], &nfaccess, sizeof(int), 0);
+
+		fp = fopen(file_name, "wb");//open file
+
+		/*get file size*/
+		recv(sock[0], &nfile_size, sizeof(int), 0);
+		int file_size = ntohl(nfile_size);
+		printf("file size:%d\n",file_size);
+		//char blank;
+		//recv(sock, &blank, sizeof(char), 0);
+		
+		//bzero(fbuffer,sizeof(fbuffer));
+		/*get file from client in packets, write to file */
+		int bytes_remn = file_size;
+		while(bytes_remn > 0) 
+		{
+			bytes_recv = recv(sock[0], fbuffer, MAXBUFSIZE, 0);
+			fwrite(fbuffer, sizeof(char), bytes_recv, fp);
+			bytes_remn -= bytes_recv;
+			
+		}/*
+		while ((bytes_recv = recv(sock, fbuffer, MAXBUFSIZE, 0)) > 0)
+		{
+			fwrite(fbuffer, sizeof(char), bytes_recv, fp);
+			//bzero(fbuffer,sizeof(fbuffer));
+			puts("INWHILE");
+		}
+		puts("FINISHED WHILE");
+		//printf("fbuffer after incorrect while: %s\n",fbuffer);
+		/*while (bytes_recv < file_size)
+		{
+			//bzero(fbuffer,sizeof(fbuffer));
+			bytes_recv += recv(sock, fbuffer, sizeof(fbuffer), 0);
+			fwrite(fbuffer, sizeof(fbuffer), 1, fp);
+			printf("fbuffer: %s\nbytes_recv: %d\n", fbuffer,bytes_recv);
+			
+		}
+		/*write leftover bytes that were incommensurable with sizeof(fbuffer)*/
+		//bzero(fbuffer,sizeof(fbuffer));
+		//printf("fbuffer after bzero: %s\n",fbuffer);
+		/*int t_remain = file_size - bytes_recv;
+		printf("t_remain: %d\n", t_remain);
+		recv(sock, fbuffer, t_remain, 0);
+		printf("fbuffer after second recv: %s\n",fbuffer);
+		fwrite(fbuffer, t_remain, 1, fp);
+		fflush(fp);*/
+		fclose(fp);
+		return 0;
+	}
 }
 
 int put()
@@ -105,10 +185,6 @@ int put()
 	return 0;
 }
 
-int get()
-{
-	return 0;
-}
 
 int list()
 {
@@ -233,7 +309,7 @@ int main (int argc, char * argv[])
 				
 				while((bytes_read = fread(fbuffer, 1, MAXBUFSIZE, fp)) > 0)
 				{
-					send(sock[0], fbuffer, read, 0);
+					send(sock[0], fbuffer, bytes_read, 0);
 				}
 				
 			}
@@ -246,14 +322,14 @@ int main (int argc, char * argv[])
 		}
 		else if(!strcmp(token, "get")) 
 		{
-			if(get_from_server(sock, command, server1)) //get file from server
+			if(get(sock, command, comdup)) //get file from server
 			{
 				printf("FILE DOES NOT EXIST ON SERVER. PLEASE CHOOSE A NEW FILE\n");
 			}
 		}
 		else if(!strcmp(token, "list"))
 		{
-			if(get_from_server(sock, command, server1)) // get ls from server
+			if(list()) // get ls from server
 			{
 				printf("ERROR executing ls command\n");
 			}
