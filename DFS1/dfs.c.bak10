@@ -233,81 +233,67 @@ int main (int argc, char * argv[] )
 	printf("listening on port %s....\n", argv[2]);
 	cli_addr_length = sizeof(cli_addr);
 	serv_addr_length = sizeof(serv_addr);
-	
-
+	sock_accepted = accept(sock, (struct sockaddr *)&cli_addr,&cli_addr_length);
+	struct config_struct *c = malloc(sizeof(struct config_struct));
+	authenticate(sock_accepted, c, users);
 
 	while(1){
-		if((sock_accepted = accept(sock, (struct sockaddr *)&cli_addr,&cli_addr_length)) > 0)
+		bzero(buffer,sizeof(buffer));
+		/*get command from client, parse it*/
+		recv(sock_accepted, buffer, sizeof(buffer), 0);
+		printf("received from client: \n%send\n", buffer);
+		char *bufdup = strndup(buffer, strlen(buffer)-1);    //remove new line
+		char *token = strsep(&bufdup, " ");
+		
+		
+		if(!strcmp(token, "put"))
 		{
-			printf("connection  formed\n");
-			int pid = fork();
-			if(pid == 0)
-			{	
-				struct config_struct *c = malloc(sizeof(struct config_struct));
-				authenticate(sock_accepted, c, users);
-				while(1)
-				{
-					bzero(buffer,sizeof(buffer));
-					/*get command from client, parse it*/
-					recv(sock_accepted, buffer, sizeof(buffer), 0);
-					printf("command received: %s\n", buffer);
-					char *bufdup = strndup(buffer, strlen(buffer)-1);    //remove new line
-					char *token = strsep(&bufdup, " ");
-					
-					
-					if(!strcmp(token, "put"))
-					{
-						if(write_from_client(sock_accepted, bufdup))
-						{
-							printf("requested file exists\n");
-							continue;
-						}
-					}
-
-					else if(!strcmp(token, "get"))
-					{
-						if(read_to_client(sock_accepted, bufdup))
-						{
-							printf("FILE DOES NOT EXIST\n");
-							continue;
-						}
-					}
-
-					else if(!strncmp(buffer, "list", 4))
-					{
-						system("ls > ls_tmp.txt"); //write ls results to temp file
-						char file_name[] = "ls_tmp.txt";
-						if(read_to_client(sock_accepted, file_name))
-						{
-							printf("ERROR executing list command\n");
-							continue;
-						}
-					}
-
-					else if(!strncmp(buffer, "exit", 4))
-					{
-						printf("exiting....\n");
-						break;
-					}
-
-					else 
-					{
-						/* command was not recognized, repeat it back to client*/
-						printf("unrecognized command\n");
-						char *comm = " -- THE PREVIOUS COMMAND IS NOT UNDERSTOOD --\n";
-						int msglen = strlen(comm);
-						send(sock_accepted, &msglen, sizeof(int), 0);
-						send(sock_accepted, comm, strlen(comm), 0);
-						continue; 
-					}
-					
-				}
-				free(c);
-				exit(0);
+			if(write_from_client(sock_accepted, bufdup))
+			{
+				printf("requested file exists\n");
+				continue;
 			}
+		}
+
+		else if(!strcmp(token, "get"))
+		{
+			if(read_to_client(sock_accepted, bufdup))
+			{
+				printf("FILE DOES NOT EXIST\n");
+				continue;
+			}
+		}
+
+		else if(!strncmp(buffer, "list", 4))
+		{
+			system("ls > ls_tmp.txt"); //write ls results to temp file
+			char file_name[] = "ls_tmp.txt";
+			if(read_to_client(sock_accepted, file_name))
+			{
+				printf("ERROR executing list command\n");
+				continue;
+			}
+		}
+
+		else if(!strncmp(buffer, "exit", 4))
+		{
+			printf("exiting....\n");
+			break;
+		}
+
+		else 
+		{
+			/* command was not recognized, repeat it back to client*/
+			printf("unrecognized command\n");
+			char *comm = " -- THE PREVIOUS COMMAND IS NOT UNDERSTOOD --\n";
+			int msglen = strlen(comm);
+			printf("msglen: %d\n",msglen );
+			send(sock_accepted, &msglen, sizeof(int), 0);
+			send(sock_accepted, comm, strlen(comm), 0);
+			continue; 
 		}
 	}	
 	free(users);
-	
+	free(c);
 	close(sock);
 }
