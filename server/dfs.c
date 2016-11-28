@@ -279,6 +279,7 @@ int main (int argc, char * argv[] )
 				
 				while(1)
 				{
+					char sys_command[64];
 					bzero(buffer,sizeof(buffer));
 					/*get command from client, parse it*/
 					recv(sock_accepted, buffer, sizeof(buffer), 0);
@@ -327,11 +328,13 @@ int main (int argc, char * argv[] )
 						{
 							continue;
 						}
-						if(access("ls_tmp", F_OK) != -1) //file exists
+						if(access("ls_tmp", F_OK) != -1) //file exists need to remove old copy
 						{
 							system("rm ls_tmp.txt");
 						}
-						system("ls > ls_tmp.txt"); //write ls results to temp file
+						sprintf(sys_command, "ls %s > ls_tmp.txt", c->base_dir);
+						printf("sys_command: %s\n",sys_command );
+						system(sys_command); //write ls results to temp file
 						char file_name[] = "ls_tmp.txt";
 		
 						if(read_to_client(sock_accepted, file_name))

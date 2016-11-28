@@ -1,6 +1,1 @@
-dfs
-dfs.c
-dfs.conf
-ls_tmp.txt
 test2.txt
-test.txt
