@@ -1,4 +1,5 @@
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -104,6 +105,18 @@ int authenticate(int sock, struct config_struct *c, struct user_struct *users)
 
 }
 
+int construct_directory(char *base_dir, struct config_struct *c)
+{
+	struct stat st = {0};
+
+	sprintf(c->base_dir, "..%s/%s",base_dir,c->username);
+	//printf("c->base_dir: %s\n", c->base_dir);
+	if (stat(c->base_dir, &st) == -1)
+	{
+		mkdir(c->base_dir, 0700);
+	}
+	return 0;
+}
 /* gets file, reads it into a buffer, sends it to client */
 int read_to_client(int sock, char *file_name) 
 {
@@ -308,6 +321,10 @@ int main (int argc, char * argv[] )
 						if(!authenticate(sock_accepted, c, users))
 						{
 							puts("Invalid Username/Password");
+							continue;
+						}
+						if(construct_directory(argv[1], c))
+						{
 							continue;
 						}
 						if(access("ls_tmp", F_OK) != -1) //file exists
