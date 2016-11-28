@@ -357,11 +357,13 @@ int main (int argc, char * argv[])
 		else
 		{
 			/*unrecognized command.. let server handle this*/
-			send(sock[0], command, strlen(command)+1, 0);
-			char msg[MAXBUFSIZE];
-			recv(sock[0], msg, sizeof(msg), 0);
+			send(sock[0], command, strlen(command), 0);
+			int msglen = 0;
+			recv(sock[0], &msglen, sizeof(int), 0);
+			char *msg = malloc(sizeof(char) * msglen);
+			recv(sock[0], msg, msglen, 0);
 			puts(msg);
-
+			free(msg);
 		}
 
 	}
@@ -370,6 +372,7 @@ int main (int argc, char * argv[])
 	close(sock[1]);
 	close(sock[2]);
 	close(sock[3]);
+	free(c);
 	return 0;
 }
 	

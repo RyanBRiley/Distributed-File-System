@@ -82,7 +82,7 @@ int authenticate(int sock, struct config_struct *c, struct user_struct *users)
 		i++;
 	}
 	printf("authenticated: %d\n", authenticated);
-	return 0;
+	return authenticated;
 
 }
 
@@ -244,13 +244,10 @@ int main (int argc, char * argv[] )
 		printf("received from client: \n%send\n", buffer);
 		char *bufdup = strndup(buffer, strlen(buffer)-1);    //remove new line
 		char *token = strsep(&bufdup, " ");
-		//printf("token: %s\n",token);
-		//printf("bufdup: %s\n",bufdup);
 		
 		
 		if(!strcmp(token, "put"))
 		{
-			puts("in put");
 			if(write_from_client(sock_accepted, bufdup))
 			{
 				printf("requested file exists\n");
@@ -288,12 +285,15 @@ int main (int argc, char * argv[] )
 		{
 			/* command was not recognized, repeat it back to client*/
 			printf("unrecognized command\n");
-			char *comm = strndup(buffer, strlen(buffer));
-			strcat(comm, " -- THE PREVIOUS COMMAND IS NOT UNDERSTOOD\n");
+			char *comm = " -- THE PREVIOUS COMMAND IS NOT UNDERSTOOD --\n";
+			int msglen = strlen(comm);
+			printf("msglen: %d\n",msglen );
+			send(sock_accepted, &msglen, sizeof(int), 0);
 			send(sock_accepted, comm, strlen(comm), 0);
 			continue; 
 		}
 	}	
-	
+	free(users);
+	free(c);
 	close(sock);
 }
