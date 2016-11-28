@@ -85,10 +85,7 @@ int write_from_client(int sock, char *file_name)
 		recv(sock, &nfile_size, sizeof(int), 0);
 		int file_size = ntohl(nfile_size);
 		printf("file size:%d\n",file_size);
-		//char blank;
-		//recv(sock, &blank, sizeof(char), 0);
 		
-		//bzero(fbuffer,sizeof(fbuffer));
 		/*get file from client in packets, write to file */
 		int bytes_remn = file_size;
 		while(bytes_remn > 0) 
@@ -97,32 +94,7 @@ int write_from_client(int sock, char *file_name)
 			fwrite(fbuffer, sizeof(char), bytes_recv, fp);
 			bytes_remn -= bytes_recv;
 			
-		}/*
-		while ((bytes_recv = recv(sock, fbuffer, MAXBUFSIZE, 0)) > 0)
-		{
-			fwrite(fbuffer, sizeof(char), bytes_recv, fp);
-			//bzero(fbuffer,sizeof(fbuffer));
-			puts("INWHILE");
 		}
-		puts("FINISHED WHILE");
-		//printf("fbuffer after incorrect while: %s\n",fbuffer);
-		/*while (bytes_recv < file_size)
-		{
-			//bzero(fbuffer,sizeof(fbuffer));
-			bytes_recv += recv(sock, fbuffer, sizeof(fbuffer), 0);
-			fwrite(fbuffer, sizeof(fbuffer), 1, fp);
-			printf("fbuffer: %s\nbytes_recv: %d\n", fbuffer,bytes_recv);
-			
-		}
-		/*write leftover bytes that were incommensurable with sizeof(fbuffer)*/
-		//bzero(fbuffer,sizeof(fbuffer));
-		//printf("fbuffer after bzero: %s\n",fbuffer);
-		/*int t_remain = file_size - bytes_recv;
-		printf("t_remain: %d\n", t_remain);
-		recv(sock, fbuffer, t_remain, 0);
-		printf("fbuffer after second recv: %s\n",fbuffer);
-		fwrite(fbuffer, t_remain, 1, fp);
-		fflush(fp);*/
 		fclose(fp);
 		return 0;
 	}
@@ -239,9 +211,9 @@ int main (int argc, char * argv[] )
 		{
 			/* command was not recognized, repeat it back to client*/
 			printf("unrecognized command\n");
-			char *comm = strndup(buffer, strlen(buffer)-1);
+			char *comm = strndup(buffer, strlen(buffer));
 			strcat(comm, " -- THE PREVIOUS COMMAND IS NOT UNDERSTOOD\n");
-			send(sock_accepted, comm, strlen(comm)+1, 0);
+			send(sock_accepted, comm, strlen(comm), 0);
 			continue; 
 		}
 	}	
