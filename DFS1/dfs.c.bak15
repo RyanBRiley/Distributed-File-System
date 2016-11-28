@@ -69,16 +69,20 @@ int authenticate(int sock, struct config_struct *c, struct user_struct *users)
 	puts("in authenticate");
 
 	int authenticated = 0;
-	char auth_attempt[MAXBUFSIZE];
+	//char auth_attempt[64];
 	char uname_attempt[32];
 	char passwd_attempt[32];
-	
+	int sz_credentials;
 
 	/*tell the client to send credentials*/
 	int auth = 1;
 	send(sock, &auth, sizeof(int), 0);
 
-	
+	recv(sock, &sz_credentials, sizeof(int), 0);
+	printf("sz_credentials: %d\n", sz_credentials);
+	char *auth_attempt = malloc(sz_credentials);
+	bzero(auth_attempt, sz_credentials);
+	send(sock, &auth, sizeof(int), 0);
 	/*get credentials*/
 	recv(sock, auth_attempt, MAXBUFSIZE, 0);
 	sscanf(auth_attempt, "%s %s", uname_attempt, passwd_attempt);

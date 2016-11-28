@@ -97,14 +97,24 @@ int configure_client(char *config_file, struct config_struct *c)
 
 int authenticate(int sock, struct config_struct *c)
 {
-	char credentials[MAXBUFSIZE];
-	sprintf(credentials, "%s %s", c->username, c->passwd);
-	send(sock, credentials, strlen(credentials), 0);
-	return 0;
-
+	char *credentials = malloc(sizeof(char)*(strlen(c->username)+strlen(c->passwd)+1));
+	int auth;
+	
+	recv(sock, &auth, sizeof(int), 0);
+	
+	if(auth)
+	{
+		//printf("c->username: %s\nc->passwd: %s\n", c->username, c->passwd);
+		sprintf(credentials, "%s %s", c->username, c->passwd);
+		//printf("credentials: %s\n",credentials);
+		//printf("sz_credentials: %d\nstrlen(credentials): %d\n",sz_credentials, strlen(credentials));
+		send(sock, credentials, MAXBUFSIZE, 0);
+		free(credentials);
+		return 0;
+	}	
 }
 
-int get(int sock[4], char *command, char *file_name)
+int get(int sock[4], char *command, char *file_name, struct config_struct *c)
 {
 	int nfile_size;
 	int faccess;
@@ -125,6 +135,7 @@ int get(int sock[4], char *command, char *file_name)
 	{
 		//send command to server
 		send(sock[0], command, strlen(command), 0);
+		authenticate(sock[0], c);
 		/*let client know that write is possible*/
 		recv(sock[0], &nfaccess, sizeof(int), 0);
 		faccess = ntohl(nfaccess);
@@ -163,8 +174,9 @@ int put()
 }
 
 
-int list(int sock[4], char *command)
+int list(int sock[4], char *command, struct config_struct *c)
 {
+
 	int nfile_size;
 	int faccess;
 	int nfaccess;
@@ -177,6 +189,7 @@ int list(int sock[4], char *command)
 			
 	//send command to server
 	send(sock[0], command, strlen(command), 0);
+	authenticate(sock[0], c);
 	/*let client know that write is possible*/
 	recv(sock[0], &nfaccess, sizeof(int), 0);
 	faccess = ntohl(nfaccess);
@@ -282,7 +295,7 @@ int main (int argc, char * argv[])
 		}
 		i++;
 	}
-	authenticate(sock[0], c);
+	
 
 	while(1)
 	{
@@ -304,7 +317,7 @@ int main (int argc, char * argv[])
 			//send command to server
 			
 			send(sock[0], command, strlen(command), 0);
-		
+			authenticate(sock[0], c);
 			//get back whether or not server can complete command (maybe file already exists)
 			recv(sock[0], &nfaccess, sizeof(int), 0);
 			faccess = ntohl(nfaccess);
@@ -335,14 +348,14 @@ int main (int argc, char * argv[])
 		}
 		else if(!strcmp(token, "get")) 
 		{
-			if(get(sock, command, comdup)) //get file from server
+			if(get(sock, command, comdup, c)) //get file from server
 			{
 				printf("FILE DOES NOT EXIST ON SERVER. PLEASE CHOOSE A NEW FILE\n");
 			}
 		}
 		else if(!strcmp(token, "list"))
 		{
-			if(list(sock, command)) // get ls from server
+			if(list(sock, command, c)) // get ls from server
 			{
 				printf("ERROR executing ls command\n");
 			}
