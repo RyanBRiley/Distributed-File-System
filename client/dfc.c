@@ -158,7 +158,7 @@ int authenticate(int sock, struct config_struct *c)
 
 int handle_file_transfer(int sock, int fd, int fragment, struct file_fragment *frag, struct config_struct *c)
 {
-	printf("in handle_file_transfer, fragment: %d\n", fragment);
+	printf("in handle_file_transfer, fragment: %d command: %s offset: %jd\n", fragment, frag->frag_command[fragment - 1], frag->offset[fragment-1]);
 	int faccess;
 	int nfaccess;
 	int ack = 0;
@@ -179,8 +179,9 @@ int handle_file_transfer(int sock, int fd, int fragment, struct file_fragment *f
 		printf("sz_file_frag: %d\n", sz_file_frag);
 		
 		send(sock, &sz_file_frag, sizeof(int), 0);
-
-		int bytes = sendfile(sock, fd, &frag->offset[fragment-1], frag->size[fragment-1]);
+		off_t offset = frag->offset[fragment-1];
+		int bytes = sendfile(sock, fd, &offset, frag->size[fragment-1]);
+		printf("bytes sent: %d\n", bytes);
 		recv(sock, &ack, sizeof(int), 0);
 		if(ack)
 		{
