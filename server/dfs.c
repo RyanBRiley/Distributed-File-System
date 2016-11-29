@@ -161,7 +161,7 @@ int read_to_client(int sock, char *file_name)
 /*gets file from client, writes it into local dir*/
 int write_from_client(int sock, char *file_name)
 {
-	int nfile_size;
+	int file_size;
 	int faccess;
 	int nfaccess;
 	int bytes_recv = 0;
@@ -187,10 +187,11 @@ int write_from_client(int sock, char *file_name)
 		fp = fopen(file_name, "wb");//open file
 
 		/*get file size*/
-		recv(sock, &nfile_size, sizeof(int), 0);
-		int file_size = ntohl(nfile_size);
-		
-		
+		recv(sock, &file_size, sizeof(int), 0);
+		//int file_size = ntohl(nfile_size);
+		printf("file size: %d\n", file_size);
+		///printf("nfile size: %d\n", nfile_size);
+
 		/*get file from client in packets, write to file */
 		int bytes_remn = file_size;
 		while(bytes_remn > 0) 
@@ -201,6 +202,7 @@ int write_from_client(int sock, char *file_name)
 			
 		}
 		fclose(fp);
+		send(sock, &faccess, sizeof(int), 0);
 		return 0;
 	}
 }
@@ -345,7 +347,7 @@ int main (int argc, char * argv[] )
 						{
 							system("rm ls_tmp.txt");
 						}
-						sprintf(sys_command, "ls %s > ls_tmp.txt", c->base_dir);
+						sprintf(sys_command, "ls -a %s > ls_tmp.txt", c->base_dir);
 						printf("sys_command: %s\n",sys_command );
 						system(sys_command); //write ls results to temp file
 						char file_name[] = "ls_tmp.txt";

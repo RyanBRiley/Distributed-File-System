@@ -10,7 +10,7 @@
 #include <openssl/md5.h>
 #include <errno.h>
 #include <unistd.h>
-#include <fcntl.h>
+
 
 #define MAXBUFSIZE 256
 
@@ -33,8 +33,8 @@ struct config_struct
 struct file_fragment
 {
 	char frag_command[4][64];
-	off_t offset[4];
-	size_t size[4];
+	int offset[4];
+	int size[4];
 };
 /*prints simple menu to stout */
 void display_user_menu(char *command)
@@ -156,45 +156,6 @@ int authenticate(int sock, struct config_struct *c)
 	
 }
 
-int handle_file_transfer(int sock, int fd, int fragment, struct file_fragment *frag, struct config_struct *c)
-{
-	printf("in handle_file_transfer, fragment: %d\n", fragment);
-	int faccess;
-	int nfaccess;
-	int ack = 0;
-	int sz_file_frag;
-	send(sock, frag->frag_command[fragment - 1], strlen(frag->frag_command[fragment - 1]), 0);
-	if (!authenticate(sock, c))
-	{
-		return 0;
-	}
-
-	//get back whether or not server can complete command (maybe file already exists)
-	recv(sock, &nfaccess, sizeof(int), 0);
-	faccess = ntohl(nfaccess);
-	printf("facess: %d\n", faccess);
-	if(faccess)
-	{
-		sz_file_frag = (int) frag->size[fragment-1];
-		printf("sz_file_frag: %d\n", sz_file_frag);
-		
-		send(sock, &sz_file_frag, sizeof(int), 0);
-
-		int bytes = sendfile(sock, fd, &frag->offset[fragment-1], frag->size[fragment-1]);
-		recv(sock, &ack, sizeof(int), 0);
-		if(ack)
-		{
-			return 0;
-		}
-
-	}
-	else //server returned 0 for faccess -- cannot complete request
-	{
-		printf("ERROR: FILE ALREADY EXISTS ON SERVER. CHOOSE ANOTHER FILE\n");
-		return 1;
-	}
-}
-
 int get(int sock[4], char *command, char *file_name, struct config_struct *c)
 {
 	int nfile_size;
@@ -254,19 +215,18 @@ int get(int sock[4], char *command, char *file_name, struct config_struct *c)
 
 int put(int sock[4], char *file_name, struct config_struct *c)
 {
-	struct stat file_stat_struct;
 	int nfile_size;
 	int file_size;
 	FILE *fp;
 	int fd;
 	int bytes_read = 0;
 	struct file_fragment *frag = malloc(sizeof(struct file_fragment));
-	
+	int sz_file_frag;
 	int i;
-	off_t offset;
+	int offset;
 
 	int hash_mod = calc_MD5_sum(file_name);
-	printf("hash_mod: %d\n", hash_mod);
+
 
 	fd = open(file_name, O_RDONLY); //open file
 	if(fd == -1) //check if file exists
@@ -274,77 +234,79 @@ int put(int sock[4], char *file_name, struct config_struct *c)
 		puts("FILE DOES NOT EXIST. CHOOSE ANOTHER FILE");
 		return 1; 
 	} 
-	
+	int faccess;
+	int nfaccess;
 
-	fstat(fd, &file_stat_struct);
-	printf("TOTAL FILE SIZE: %zu\n", file_stat_struct.st_size);
-	
+	fseek(fp, 0, SEEK_END);
+	file_size=ftell(fp);
+	sz_file_frag = file_size/4;
+	printf("file_size: %d\nfile_size/4: %d\n", file_size, file_size/4);
+	nfile_size = htonl(file_size);
+	fseek(fp, 0, SEEK_SET);
+	char fbuffer[MAXBUFSIZE];
+
 	for(i = 0; i < 4; i++)
 	{
 		sprintf(frag->frag_command[i], "put .%s.%d\n",file_name,i+1);
-		frag->offset[i] = i * (file_stat_struct.st_size/4);
+		frag->offset[i] = i * sz_file_frag;
 		if(i < 3)
 		{
-			frag->size[i] = file_stat_struct.st_size/4;
+			frag->size[i] = sz_file_frag;
 		}
 		else
 		{
-			frag->size[i] = file_stat_struct.st_size - (3 * (file_stat_struct.st_size/4));
+			frag->size[i] = file_size - (3 * sz_file_frag);
 		}
-		printf("frag[%d] -- name: %s offset: %jd size %zu\n", i, frag->frag_command[i], frag->offset[i], frag->size[i]);
+		//printf("frag[%d] -- name: %s offset: %d size %d\n", i, frag->frag_command[i], frag->offset[i], frag->size[i]);
 	}
 	//send command to server
 
 		
-	
+	send(sock[0], frag->frag_command[0], strlen(frag->frag_command[0]), 0);
+	if (!authenticate(sock[0], c))
+	{
+		return 0;
+	}/*
 	switch(hash_mod)
 	{
 		case 0:
-			handle_file_transfer(sock[0], fd, 1, frag, c);
-			handle_file_transfer(sock[0], fd, 2, frag, c);
-			handle_file_transfer(sock[1], fd, 2, frag, c);
-			handle_file_transfer(sock[1], fd, 3, frag, c);
-			handle_file_transfer(sock[2], fd, 3, frag, c);
-			handle_file_transfer(sock[2], fd, 4, frag, c);
-			handle_file_transfer(sock[3], fd, 4, frag, c);
-			handle_file_transfer(sock[3], fd, 1, frag, c);
 			break;
-		
 		case 1:
-			handle_file_transfer(sock[0], fd, 4, frag, c);
-			handle_file_transfer(sock[0], fd, 1, frag, c);
-			handle_file_transfer(sock[1], fd, 1, frag, c);
-			handle_file_transfer(sock[1], fd, 2, frag, c);
-			handle_file_transfer(sock[2], fd, 2, frag, c);
-			handle_file_transfer(sock[2], fd, 3, frag, c);
-			handle_file_transfer(sock[3], fd, 3, frag, c);
-			handle_file_transfer(sock[3], fd, 4, frag, c);
 			break;
-		
 		case 2: 
-			handle_file_transfer(sock[0], fd, 3, frag, c);
-			handle_file_transfer(sock[0], fd, 4, frag, c);
-			handle_file_transfer(sock[1], fd, 4, frag, c);
-			handle_file_transfer(sock[1], fd, 1, frag, c);
-			handle_file_transfer(sock[2], fd, 1, frag, c);
-			handle_file_transfer(sock[2], fd, 2, frag, c);
-			handle_file_transfer(sock[3], fd, 2, frag, c);
-			handle_file_transfer(sock[3], fd, 3, frag, c);
 			break;
-		
 		case 3:
-			handle_file_transfer(sock[0], fd, 2, frag, c);
-			handle_file_transfer(sock[0], fd, 3, frag, c);
-			handle_file_transfer(sock[1], fd, 3, frag, c);
-			handle_file_transfer(sock[1], fd, 4, frag, c);
-			handle_file_transfer(sock[2], fd, 4, frag, c);
-			handle_file_transfer(sock[2], fd, 1, frag, c);
-			handle_file_transfer(sock[3], fd, 1, frag, c);
-			handle_file_transfer(sock[3], fd, 2, frag, c);
 			break;
-	}
+	}*/
+	//get back whether or not server can complete command (maybe file already exists)
+	recv(sock[0], &nfaccess, sizeof(int), 0);
+	faccess = ntohl(nfaccess);
+	printf("facess: %d\n", faccess);
+	if(faccess)
+	{
+		offset = frag->offset[0];
+		printf("offset: %d\n frag->size[0]: %d\n", offset, frag->size[0]);
+		send(sock[0], &sz_file_frag, sizeof(int), 0);
 
-	close(fd);
+		int bytes = sendfile(sock[0], fd, &offset, sz_file_frag);
+		printf("bytes sent: %d\n", bytes);
+	}
+	
+		/*read from file and send it buffered to server in packets */
+		
+		/*		
+		while((bytes_read = fread(fbuffer, 1, MAXBUFSIZE, fp)) > 0)
+		{
+			send(sock[0], fbuffer, bytes_read, 0);
+		}*/
+		
+	/*}
+	else //server returned 0 for faccess -- cannot complete request
+	{
+		printf("ERROR: FILE ALREADY EXISTS ON SERVER. CHOOSE ANOTHER FILE\n");
+		return 1;
+	}*/
+	fclose(fp);
 	return 0;
 }
 
