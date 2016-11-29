@@ -6,7 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-//#include <openssl/md5.h>
+#include <openssl/md5.h>
 #include <errno.h>
 #include <unistd.h>
 
@@ -93,6 +93,38 @@ int configure_client(char *config_file, struct config_struct *c)
 	}
 
 	fclose(fp);
+	return 0;
+}
+
+int calc_MD5_sum(char *file_name)
+{
+	unsigned char hash[MD5_DIGEST_LENGTH];
+	FILE *fp = fopen(file_name, "rb");
+	MD5_CTX mdContext;
+	int bytes_read;
+	unsigned char buffer[1024];
+	char num;
+	int mod;
+	int i;
+
+	if(fp == NULL)
+	{
+		printf("MD5 cannot be calculated");
+		return 0;
+	}
+	MD5_Init(&mdContext);
+	while((bytes_read = fread(buffer, 1, 1024, fp)) != 0)
+	{
+		MD5_Update(&mdContext, buffer, bytes_read);
+	}
+	MD5_Final(hash, &mdContext);
+	for(i = 0; i < MD5_DIGEST_LENGTH; i++)
+	{
+		printf("%02x", hash[i]);
+	}
+	puts("  end md5");
+	mod = hash[0] % 4;
+	printf("mod: %d\n",mod);
 	return 0;
 }
 
@@ -184,6 +216,8 @@ int put(int sock[4], char *command, char *file_name, struct config_struct *c)
 	int file_size;
 	FILE *fp;
 	int bytes_read = 0;
+
+	calc_MD5_sum(file_name);
 
 	fp = fopen(file_name, "r"); //open file
 	if(fp == NULL) //check if file exists
