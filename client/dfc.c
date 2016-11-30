@@ -138,8 +138,6 @@ int authenticate(int sock, struct config_struct *c)
 	int authenticated = 0;
 	
 	recv(sock, &ack, sizeof(int), 0);
-	
-	
 
 	sprintf(credentials, "%s %s", c->username, c->passwd);
 
@@ -147,7 +145,7 @@ int authenticate(int sock, struct config_struct *c)
 	recv(sock, &authenticated, sizeof(int), 0);
 	send(sock, &ack, sizeof(int), 0);
 	free(credentials);
-	//printf("authenticated: %d\n",authenticated);
+
 	if(!authenticated)
 	{
 		puts("Invalid Username/Password. Please try again.");
@@ -158,7 +156,7 @@ int authenticate(int sock, struct config_struct *c)
 
 int handle_file_transfer(int sock, int fd, int fragment, struct file_fragment *frag, struct config_struct *c)
 {
-	//printf("in handle_file_transfer, fragment: %d command: %s offset: %jd\n", fragment, frag->frag_command[fragment - 1], frag->offset[fragment-1]);
+	
 	int faccess;
 	int nfaccess;
 	int ack = 0;
@@ -172,16 +170,15 @@ int handle_file_transfer(int sock, int fd, int fragment, struct file_fragment *f
 	//get back whether or not server can complete command (maybe file already exists)
 	recv(sock, &nfaccess, sizeof(int), 0);
 	faccess = ntohl(nfaccess);
-	//printf("facess: %d\n", faccess);
+	
 	if(faccess)
 	{
 		sz_file_frag = (int) frag->size[fragment-1];
-		//printf("sz_file_frag: %d\n", sz_file_frag)
 		
 		send(sock, &sz_file_frag, sizeof(int), 0);
 		off_t offset = frag->offset[fragment-1];
 		int bytes = sendfile(sock, fd, &offset, frag->size[fragment-1]);
-		//printf("bytes sent: %d\n", bytes);
+
 		recv(sock, &ack, sizeof(int), 0);
 		if(ack)
 		{
@@ -218,20 +215,14 @@ int handle_list_request(int sock, char *buffer, struct config_struct *c)
 		return 1;
 	}
 
-	//send(sock[0], &nfaccess, sizeof(int), 0);
-
-
 	/*get file size*/
 	recv(sock, &nfile_size, sizeof(int), 0);
 	int file_size = ntohl(nfile_size);
-	printf("file size: %d\n", file_size);
-	/*get file from client in packets, write to file */
-	//char *fbuffer = malloc(file_size);
+	
 	
 	recv(sock, buffer, file_size, 0);
 	buffer[file_size-1] = '\0';
-	//strcat(buffer, "\0");
-	//printf("--BUFFER-- \n%s\n",buffer );
+	
 	return 0;
 }
 
@@ -239,15 +230,13 @@ void aggregate_list_results(char *buffer_aggregrate, char *buffer)
 {
 
 	char *bufdup = strndup(buffer, strlen(buffer));    //remove new line
-	//char token[MAXBUFSIZE]; 
+
 	char *token = "";
-	//printf("token2: %s\n", token2);
+	
 	int i = 0;
 	while (token != NULL)
 	{
-		//puts("HERE!!!");
-		//strcpy(token, token2);
-		//printf("TOKEN AFTER STRCPY: %s\n", token);
+		
 		token = strsep(&bufdup, "\n");
 
 		if (i < 2)
@@ -259,16 +248,9 @@ void aggregate_list_results(char *buffer_aggregrate, char *buffer)
 		{
 			strcat(buffer_aggregrate, token);
 			strcat(buffer_aggregrate, "\n");
-			//printf("last char of token: %d\n", atoi(&token[strlen(token)-1]));
+			
 		}
-		/*
-		printf("token: %s\n", token);
-		printf("token[0]: %c\n", token[0]);
-		if(token[0] == 'f')
-		{
-			puts("F COMPARISON");
-			puts("");
-		}*/
+		
 	}
 }
 int get(int sock[4], char *command, char *file_name, struct config_struct *c)
@@ -342,7 +324,7 @@ int put(int sock[4], char *file_name, struct config_struct *c)
 	off_t offset;
 
 	int hash_mod = calc_MD5_sum(file_name);
-	//printf("hash_mod: %d\n", hash_mod);
+	
 
 	fd = open(file_name, O_RDONLY); //open file
 	if(fd == -1) //check if file exists
@@ -353,7 +335,7 @@ int put(int sock[4], char *file_name, struct config_struct *c)
 	
 
 	fstat(fd, &file_stat_struct);
-	//printf("TOTAL FILE SIZE: %zu\n", file_stat_struct.st_size);
+	
 	
 	for(i = 0; i < 4; i++)
 	{
@@ -367,11 +349,8 @@ int put(int sock[4], char *file_name, struct config_struct *c)
 		{
 			frag->size[i] = file_stat_struct.st_size - (3 * (file_stat_struct.st_size/4));
 		}
-		//printf("frag[%d] -- name: %s offset: %jd size %zu\n", i, frag->frag_command[i], frag->offset[i], frag->size[i]);
-	}
-	//send command to server
-
 		
+	}
 	
 	switch(hash_mod)
 	{
@@ -428,8 +407,6 @@ int put(int sock[4], char *file_name, struct config_struct *c)
 int list(int sock[4], struct config_struct *c)
 {
 
-	
-	//int bytes_recv = 0;
 
 	char buffer_1[MAXBUFSIZE];
 	char buffer_2[MAXBUFSIZE];
@@ -442,14 +419,17 @@ int list(int sock[4], struct config_struct *c)
 	char fragments[128][64];
 	char uniq_frags[128][64];
 
+	memset(buffer_1, 0, sizeof(buffer_1));
+	memset(buffer_2, 0, sizeof(buffer_2));
+	memset(buffer_3, 0, sizeof(buffer_3));
+	memset(buffer_4, 0, sizeof(buffer_4));
+
+	memset(buffer_aggregrate, 0, sizeof(buffer_aggregrate));
+	memset(list_buffer, 0, sizeof(list_buffer));
+
 	handle_list_request(sock[0], buffer_1, c);
-	//puts("HERE0");
-	//printf("-- BUFFER 0 --\n%s\n",buffer_1);
 	handle_list_request(sock[1], buffer_2, c);
-	//puts("HERE1");
-	//printf("-- BUFFER 1 --\n%s\n",buffer_2);
 	handle_list_request(sock[2], buffer_3, c);
-	//printf("-- BUFFER 2 --\n%s\n",buffer_3);
 	handle_list_request(sock[3], buffer_4, c);
 
 	aggregate_list_results(buffer_aggregrate, buffer_1);
@@ -457,18 +437,14 @@ int list(int sock[4], struct config_struct *c)
 	aggregate_list_results(buffer_aggregrate, buffer_3);
 	aggregate_list_results(buffer_aggregrate, buffer_4);
 
-	printf("buffer aggregate: \n%s\n",buffer_aggregrate);
-	//printf("last char of token: %d\n", atoi(&token[strlen(token)-1]));
 	int i = 0;
 	char *bufdup = strndup(buffer_aggregrate, strlen(buffer_aggregrate));    //remove new line
-	//char token[MAXBUFSIZE]; 
+
 	char *token = "";
-	//printf("token2: %s\n", token2);
+
 	while (token != NULL)
 	{
-		//puts("HERE!!!");
-		//strcpy(token, token2);
-		//printf("TOKEN AFTER STRCPY: %s\n", token);
+	
 		token = strsep(&bufdup, "\n");
 
 		if ((token != NULL) && (token[0] != '.'))
@@ -482,14 +458,9 @@ int list(int sock[4], struct config_struct *c)
 			i++;
 		}
 	}
-	int a = 0;
-	while (a < i)
-	{
-		printf("fragments[%d]: %s\n",a, fragments[a]);
-		a++;
-	}
+	list_buffer[strlen(list_buffer) - 1] = '\0';
 
-	printf("list buffer: \n%s\n",list_buffer);
+
 	int x = 0;
 	
 	int uniq_count = 0;
@@ -516,47 +487,40 @@ int list(int sock[4], struct config_struct *c)
 	}
 
 	x = 0;
-	puts("UNIQ");
-	printf("i: %d\n", i);
-	puts("-------------");
+
 	while(x < uniq_count)
 	{
-		printf("x val in uniq loop: %d\n", x);
+	
 		int all_frags[4];
 		int init;
 		for(init = 0; init < 4; init++)
 		{
 			all_frags[init] = 0;
 		}
+		
 		int y = 0;
-		printf("%s\n",uniq_frags[x] );
 		while(y < i)
 		{
-			printf("y val in uniq loop: %d\n", y);
+		
 			if(!strncmp(uniq_frags[x], fragments[y] + 1, strlen(uniq_frags[x])))
 			{
-				puts("MATCH");
-				//printf("frag[x][strlen(frag[x])]: %d\n", atoi(&strrchr(fragments[y], '.')[1]));
-				//printf("stcchr: %c\n", strrchr(fragments[x], ".")[1]);
+			
 				all_frags[atoi(&strrchr(fragments[y], '.')[1]) -1 ] = 1;
-				//printf("all_frags[%d]: %d\n",atoi(strrchr(fragments[x], ".")[1]), all_frags[strrchr(fragments[x], '.')[1]]);
+				
 			}
 			y++;
 		}
-		for(init = 0; init < 4; init++)
-		{
-			printf("all frags[%d]: %d\n", init, all_frags[init]);
-		}
+		
 		if(all_frags[0] && all_frags[1] && all_frags[2] && all_frags[3])
 		{
-			puts("all frags AVAIL!!!");
+			
 			char complete[64];
 			sprintf(complete, "%s\n", uniq_frags[x]);
 			strcat(list_buffer, complete);
 		}
 		else
 		{
-			puts("INCOMPLETE!!!");
+			
 			char incomplete[64];
 			sprintf(incomplete, "%s [incomplete]", uniq_frags[x]);
 			strcat(list_buffer, incomplete);
@@ -564,88 +528,8 @@ int list(int sock[4], struct config_struct *c)
 		x++;
 	}
 
-	printf("----  list buffer ---- \n%s\n", list_buffer);
-	/*while (x < i)
-	{
-		int frags_avail[4];
-		frags_avail[strrchr(fragments[x], '.')[1]] = 1;
-		int y = x + 1;
-		while(y < i)
-		{
-			if(!strncmp(fragments[x], fragments[y], strlen(fragments[x])-2))
-			{
-				puts("-------------------------------");
-				printf("fragments[x] %s\n", fragments[x]);
-				printf("fragments[y] %s\n", fragments[y]);
-				puts("-------------------------------");
-			}
-			y++;
-		}
-		x++;
-	}
-		/*printf("frag[x]: %s\n", fragments[x]+1);
-		printf("frag[x][strlen(frag[x])]: %c\n", strrchr(fragments[x], '.')[1]);
-		if (!strncmp(fragments[x] + 1, "fragtest.txt.1", strlen(fragments[x])-2))
-		{
-			puts("STRNCMP!!!!!!!!!");
-		}/*
-		x++;
-	}
-		/*
-		printf("token: %s\n", token);
-		printf("token[0]: %c\n", token[0]);
-		if(token[0] == 'f')
-		{
-			puts("F COMPARISON");
-			puts("");
-		}*/
-	
-		/*
-		printf("token: %s\n", token);
-		printf("token[0]: %c\n", token[0]);
-		if(token[0] == 'f')
-		{
-			puts("F COMPARISON");
-			puts("");
-		}*/
-	
-	//split into command and filename
-	//printf("-- BUFFER 3 --\n%s\n",buffer_4);
-	//puts("HERE4");
-	//printf("-- BUFFER 0 --\n%s\n",buffer[0]);
-	/*printf("-- BUFFER 1 --\n%s\n",buffer[1]);
-	printf("-- BUFFER 2 --\n%s\n",buffer[2]);
-	printf("-- BUFFER 3 --\n%s\n",buffer[3]);
-	/*		
-	//send command to server
-	send(sock[0], command, strlen(command), 0);
-	if (!authenticate(sock[0], c))
-	{
-		return 0;
-	}*/
-	/*let client know that write is possible*/
-	/*recv(sock[0], &nfaccess, sizeof(int), 0);
-	faccess = ntohl(nfaccess);
-	if(!faccess)
-	{
-		puts("ERROR FETCHING FILE FROM SERVER");
-		return 1;
-	}
+	printf("%s\n\n", list_buffer);
 
-	//send(sock[0], &nfaccess, sizeof(int), 0);*/
-
-
-	/*get file size*/
-	/*recv(sock[0], &nfile_size, sizeof(int), 0);
-	int file_size = ntohl(nfile_size);
-	printf("file size: %d\n", file_size);*/
-	/*get file from client in packets, write to file */
-	//char *fbuffer = malloc(file_size);
-	
-	/*recv(sock[0], fbuffer, MAXBUFSIZE, 0);
-	printf("%s\n",fbuffer);
-	//free(fbuffer);	
-	return 0;*/
 	return 0;
 	
 }
