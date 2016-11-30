@@ -347,10 +347,12 @@ int main (int argc, char * argv[] )
 						{
 							system("rm ls_tmp.txt");
 						}
-						sprintf(sys_command, "ls -a %s > ls_tmp.txt", c->base_dir);
+						char file_name[MAXBUFSIZE];
+						sprintf(file_name, "ls_temp_%s.txt", argv[2]);
+						sprintf(sys_command, "ls -a %s > %s", c->base_dir, file_name);
 						printf("sys_command: %s\n",sys_command );
 						system(sys_command); //write ls results to temp file
-						char file_name[] = "ls_tmp.txt";
+						//char file_name[] = "ls_tmp.txt";
 		
 						if(read_to_client(sock_accepted, file_name))
 						{

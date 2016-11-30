@@ -1,8 +1,2 @@
 .
 ..
-dirtest.txt
-fear.jpg
-.fragtest.txt.1
-.fragtest.txt.3
-test2.txt
-.test.txt.1
