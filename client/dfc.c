@@ -370,7 +370,7 @@ int get(int sock[4], char *command, char *file_name, struct config_struct *c)
 	{
 		char sys_command[64];
 		sprintf(sys_command, "rm %s", frag_name[p-1]);
-		FILE *fragfp = fopen(frag_name[p-1], "rb");//open file
+		FILE *fragfp = fopen(frag_name[p-1], "a+");//open file
 		if (fragfp == NULL)
 		{
 			printf("error opening file for reading");

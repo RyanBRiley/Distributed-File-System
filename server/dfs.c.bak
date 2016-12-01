@@ -122,15 +122,13 @@ int construct_directory(char *base_dir, struct config_struct *c)
 /* gets file, reads it into a buffer, sends it to client */
 int read_to_client(int sock, char *file_name) 
 {
-	struct stat file_stat_struct;
 	int faccess;
 	int nfaccess;
 	FILE *fp;
 	char fbuffer[MAXBUFSIZE];
-	int fd;
 	printf("file_name to fetch: %s\n",file_name);
-	fd = open(file_name, O_RDONLY);
-	if(fd == -1) //file does not exist
+	fp = fopen(file_name, "r");
+	if(fp == NULL) //file does not exist
 	{
 	
 		faccess = 0; //status code to inform client that there was a problem opening file
@@ -144,20 +142,18 @@ int read_to_client(int sock, char *file_name)
 	faccess = 1;
 	nfaccess = htonl(faccess);
 	send(sock, &nfaccess, sizeof(int), 0);
-	fstat(fd, &file_stat_struct);
+
 	/*get file size and send it to client */
-	/*fseek(fp, 0, SEEK_END);
-	int file_size=ftell(fp);*/
-	int file_size = (int)file_stat_struct.st_size;
+	fseek(fp, 0, SEEK_END);
+	int file_size=ftell(fp);
 	int nfile_size = htonl(file_size);
 	send(sock, &nfile_size, sizeof(int), 0);
-	sendfile(sock, fd, NULL, file_stat_struct.st_size);
+
 	/*go back to beginning of file, read it into the buffer, send it client*/
-	//fseek(fp, 0, SEEK_SET);
+	fseek(fp, 0, SEEK_SET);
 	//char *fbuffer = malloc(file_size); //allocate buffer
 	int bytes_remn = file_size;
 	int bytes_sent = 0; 
-	/*
 	while( bytes_remn > 0)
 	{
 		fread(fbuffer, file_size, 1, fp);
@@ -167,7 +163,7 @@ int read_to_client(int sock, char *file_name)
 		printf("bytes_sent: %d\n", bytes_sent);
 	}
 	//free(fbuffer);
-	fclose(fp);*/
+	fclose(fp);
 	return 0;
 }
 

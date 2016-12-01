@@ -4,4 +4,6 @@
 .dfsTest.txt.4
 .fragtest.txt.1
 .fragtest.txt.2
+.nasa.jpg.1
+.nasa.jpg.4
 test2.txt
