@@ -1,4 +1,6 @@
 .
 ..
+.dfsTest.txt.1
+.dfsTest.txt.4
 .fragtest.txt.2
 .fragtest.txt.3

@@ -253,46 +253,51 @@ void aggregate_list_results(char *buffer_aggregrate, char *buffer)
 		
 	}
 }
-int get(int sock[4], char *command, char *file_name, struct config_struct *c)
-{
+
+int handle_get_request(int sock, char *command, char *file_name, struct config_struct *c)
+{			
+	
 	int nfile_size;
 	int faccess;
 	int nfaccess;
 	int bytes_recv = 0;
-	unsigned int cli_addr_length;
 	FILE *fp;
 	char fbuffer[MAXBUFSIZE];
 
-	
-			
+
 	if(access(file_name, F_OK) != -1) //file exists
 	{
 		puts("FILE ALREADY EXISTS");
-		return 1;
+		return 0;
 	}
 	else //file does not exist, ok to write
 	{
 		//send command to server
-		send(sock[0], command, strlen(command), 0);
-		if (!authenticate(sock[0], c))
+		send(sock, command, strlen(command), 0);
+		if (!authenticate(sock, c))
 		{
-			return 0;
+			return 1;
 		}
 		/*let client know that write is possible*/
-		recv(sock[0], &nfaccess, sizeof(int), 0);
+		recv(sock, &nfaccess, sizeof(int), 0);
 		faccess = ntohl(nfaccess);
 		if(!faccess)
 		{
 			puts("ERROR FETCHING FILE FROM SERVER");
-			return 1;
+			return 0;
 		}
 
 	
 
 		fp = fopen(file_name, "wb");//open file
+		if (fp == NULL)
+		{
+			printf("error opening file for writing");
+			return 1;
+		}
 
 		/*get file size*/
-		recv(sock[0], &nfile_size, sizeof(int), 0);
+		recv(sock, &nfile_size, sizeof(int), 0);
 		int file_size = ntohl(nfile_size);
 		printf("file size:%d\n",file_size);
 	
@@ -300,14 +305,87 @@ int get(int sock[4], char *command, char *file_name, struct config_struct *c)
 		int bytes_remn = file_size;
 		while(bytes_remn > 0) 
 		{
-			bytes_recv = recv(sock[0], fbuffer, MAXBUFSIZE, 0);
+			bytes_recv = recv(sock, fbuffer, MAXBUFSIZE, 0);
 			fwrite(fbuffer, sizeof(char), bytes_recv, fp);
 			bytes_remn -= bytes_recv;
 			
 		}
 		fclose(fp);
+		return 1;
+	}
+}
+
+int get(int sock[4], char *command, char *file_name, struct config_struct *c)
+{
+	int s;
+	int p;
+	int request_complete = 0;
+	char frag_name[4][64];
+	char frag_command[64];
+	char buffer;
+
+	for (s = 0; s < 4; s++)
+	{	
+		printf("checking server: %d for file: %s\n", s+1, file_name);
+		request_complete = handle_get_request(sock[s], command, file_name, c);
+		if(request_complete)
+		{
+			return 0;
+		}
+	}
+
+	if(access(file_name, F_OK) != -1) //file exists
+	{
+		puts("FILE ALREADY EXISTS");
 		return 0;
 	}
+
+	for(p = 1; p < 5; p++)
+	{
+		sprintf(frag_name[p-1], ".%s.%d", file_name, p);
+		printf("frag_name[%d]: %s\n", p-1, frag_name[p-1]);
+	}
+
+	for(p = 1; p < 5; p++)
+	{
+		sprintf(frag_command, "get %s\n", frag_name[p-1]);
+		for (s = 0; s < 4; s++)
+		{	
+			printf("requesting: %s from server %d\n", frag_name[p-1], s+1);
+			request_complete = handle_get_request(sock[s], frag_command, frag_name[p-1], c);
+			if(request_complete)
+			{
+				break;
+			}
+		}
+	}
+
+	FILE *fp = fopen(file_name, "wb");//open file
+	if (fp == NULL)
+	{
+		printf("error opening file for writing");
+		return 1;
+	}
+	for(p = 1; p < 5; p++)
+	{
+		char sys_command[64];
+		sprintf(sys_command, "rm %s", frag_name[p-1]);
+		FILE *fragfp = fopen(frag_name[p-1], "rb");//open file
+		if (fragfp == NULL)
+		{
+			printf("error opening file for reading");
+			return 1;
+		}
+		while(!feof(fragfp))
+		{
+			fread(&buffer, sizeof(char), 1, fragfp);
+			fwrite(&buffer, sizeof(char), 1 , fp);
+		}
+		fclose(fragfp);
+		system(sys_command);
+	}
+	fclose(fp);		
+	return 0;
 }
 
 int put(int sock[4], char *file_name, struct config_struct *c)
@@ -497,7 +575,7 @@ int list(int sock[4], struct config_struct *c)
 		{
 			all_frags[init] = 0;
 		}
-		
+
 		int y = 0;
 		while(y < i)
 		{

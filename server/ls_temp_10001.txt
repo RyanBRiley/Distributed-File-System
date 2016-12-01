@@ -1,8 +1,9 @@
 .
 ..
+.dfsTest.txt.2
+.dfsTest.txt.3
 dirtest.txt
 fear.jpg
 .fragtest.txt.1
 .fragtest.txt.4
-test2.txt
 .test.txt.1
