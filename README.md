@@ -1,5 +1,7 @@
 # csci4273-PA3
 Distributed File System
+Author: Ryan Riley
+Date: 20 November 2016
 
 ##Depenencies
 apt-get install libssl-dev
