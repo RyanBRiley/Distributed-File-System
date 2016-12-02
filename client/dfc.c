@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/signal.h>
 #include <sys/socket.h>
 #include <sys/sendfile.h>
 #include <netinet/in.h>
@@ -136,20 +137,33 @@ int authenticate(int sock, struct config_struct *c)
 	char *credentials = malloc(sizeof(char)*(strlen(c->username)+strlen(c->passwd)+1));
 	int ack;
 	int authenticated = 0;
+	int bytes_recv = 0;
 	
-	recv(sock, &ack, sizeof(int), 0);
+	
+	bytes_recv = recv(sock, &ack, sizeof(int), 0);
+	if (bytes_recv < 1)
+	{
+	
+		return 0;
+	}
+	
+	bytes_recv = 0;
 
 	sprintf(credentials, "%s %s", c->username, c->passwd);
-
+	
 	send(sock, credentials, MAXBUFSIZE, 0);
+	
 	recv(sock, &authenticated, sizeof(int), 0);
+	
 	send(sock, &ack, sizeof(int), 0);
+
 	free(credentials);
 
 	if(!authenticated)
 	{
 		puts("Invalid Username/Password. Please try again.");
 	}
+	
 	return authenticated;
 	
 }
@@ -199,15 +213,23 @@ int handle_list_request(int sock, char *buffer, struct config_struct *c)
 	int nfile_size;
 	int faccess;
 	int nfaccess;
+	
+	
 	//send command to server
 	memset(buffer, 0, sizeof(buffer));
+
 	send(sock, command, strlen(command), 0);
+
+	
+
 	if (!authenticate(sock, c))
 	{
 		return 0;
 	}
+
 	/*let client know that write is possible*/
 	recv(sock, &nfaccess, sizeof(int), 0);
+	
 	faccess = ntohl(nfaccess);
 	if(!faccess)
 	{
@@ -215,12 +237,15 @@ int handle_list_request(int sock, char *buffer, struct config_struct *c)
 		return 1;
 	}
 
+
 	/*get file size*/
 	recv(sock, &nfile_size, sizeof(int), 0);
+	
 	int file_size = ntohl(nfile_size);
 	
 	
 	recv(sock, buffer, file_size, 0);
+
 	buffer[file_size-1] = '\0';
 	
 	return 0;
@@ -238,6 +263,7 @@ void aggregate_list_results(char *buffer_aggregrate, char *buffer)
 	{
 		
 		token = strsep(&bufdup, "\n");
+	
 
 		if (i < 2)
 		{
@@ -505,10 +531,12 @@ int list(int sock[4], struct config_struct *c)
 	memset(buffer_aggregrate, 0, sizeof(buffer_aggregrate));
 	memset(list_buffer, 0, sizeof(list_buffer));
 
-	handle_list_request(sock[0], buffer_1, c);
+	
+	handle_list_request(sock[0], buffer_1, c);	
 	handle_list_request(sock[1], buffer_2, c);
 	handle_list_request(sock[2], buffer_3, c);
 	handle_list_request(sock[3], buffer_4, c);
+
 
 	aggregate_list_results(buffer_aggregrate, buffer_1);
 	aggregate_list_results(buffer_aggregrate, buffer_2);
@@ -600,7 +628,7 @@ int list(int sock[4], struct config_struct *c)
 		{
 			
 			char incomplete[64];
-			sprintf(incomplete, "%s [incomplete]", uniq_frags[x]);
+			sprintf(incomplete, "%s [incomplete]\n", uniq_frags[x]);
 			strcat(list_buffer, incomplete);
 		}
 		x++;
@@ -614,6 +642,7 @@ int list(int sock[4], struct config_struct *c)
 
 int main (int argc, char * argv[])
 {
+	signal(SIGPIPE, SIG_IGN);
 
 	int sock[4];      // Array of sockets, one for each server
 	int connectfd[4]; // Array of connection descriptors, one for each connection (server)

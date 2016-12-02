@@ -1,5 +1,0 @@
-this is a test of the directory system
-
-this is just a test
-
-test 1234

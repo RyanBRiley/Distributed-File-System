@@ -6,4 +6,3 @@
 .fragtest.txt.2
 .nasa.jpg.1
 .nasa.jpg.4
-test2.txt
