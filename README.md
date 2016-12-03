@@ -1,7 +1,12 @@
-# csci4273-PA3
-Distributed File System
+#Distributed File System
 Author: Ryan Riley
 Date: 20 November 2016
+
+##TODO:
+clean up files
+add timeouts to sockets
+include startup script
+include more documentation
 
 ##Depenencies
 apt-get install libssl-dev
@@ -11,6 +16,7 @@ type make
 
 ###To clean:
 type make clean
+
 
 ###References:
 http://www.tldp.org/LDP/LGNET/91/misc/tranter/server.c.txt
